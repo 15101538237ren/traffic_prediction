@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Django settings for traffic_prediction project.
 
@@ -12,6 +13,7 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+from base import origin_dir, read_origin_data_into_geo_point_list
 from os.path import normpath,join
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -112,3 +114,9 @@ STATIC_ROOT = normpath(join(BASE_DIR,  'static', 'root'))
 STATICFILES_DIRS = (
     normpath(join(BASE_DIR, 'static')),
 )
+
+accident_fp = os.path.join(origin_dir, "accident_loc.tsv")
+violation_fp = os.path.join(origin_dir, "violation_loc.tsv")
+
+accident_geo_points_list, accident_geo_time_dict = read_origin_data_into_geo_point_list(accident_fp, max_lines=200)
+violation_geo_points_list, violation_geo_time_dict = read_origin_data_into_geo_point_list(violation_fp, max_lines=200)

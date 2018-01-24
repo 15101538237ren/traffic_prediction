@@ -1,7 +1,8 @@
-import os, datetime, math
-from traffic_prediction import settings
+# -*- coding: utf-8 -*-
+import os, datetime, math, simplejson, decimal
 
-data_dir = os.path.join(settings.BASE_DIR, "data")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+data_dir = os.path.join(BASE_DIR, "data")
 origin_dir = os.path.join(data_dir, "origin")
 
 SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -22,6 +23,7 @@ LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n", max_lines = -1):
     geo_points_List = []
+    geo_time_dict = {}
     line_counter = 0
     with open(input_file_path, "r") as input_file:
         line = input_file.readline()
@@ -31,9 +33,43 @@ def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\
                 break
             line_contents = line.strip(line_end).split(sep)
             time_of_point = datetime.datetime.strptime(line_contents[1], SECOND_FORMAT)
+
+            time_str = time_of_point.strftime("%Y-%m-%d %H:%M:%S")
+            geo_time_dict[time_str] = line_counter - 1
+
             longtitude = float(line_contents[2])
             latitude = float(line_contents[3])
             geo_point = [time_of_point, longtitude, latitude]
             geo_points_List.append(geo_point)
             line = input_file.readline()
-    return geo_points_List
+    return [geo_points_List, geo_time_dict]
+
+
+def safe_new_datetime(d):
+    kw = [d.year, d.month, d.day]
+    if isinstance(d, datetime.datetime):
+        kw.extend([d.hour, d.minute, d.second, d.microsecond, d.tzinfo])
+    return datetime.datetime(*kw)
+
+def safe_new_date(d):
+    return datetime.date(d.year, d.month, d.day)
+
+class DatetimeJSONEncoder(simplejson.JSONEncoder):
+    """可以序列化时间的JSON"""
+
+    DATE_FORMAT = "%Y-%m-%d"
+    TIME_FORMAT = "%H:%M:%S"
+
+    def default(self, o):
+        if isinstance(o, datetime.datetime):
+            d = safe_new_datetime(o)
+            return d.strftime("%s %s" % (self.DATE_FORMAT, self.TIME_FORMAT))
+        elif isinstance(o, datetime.date):
+            d = safe_new_date(o)
+            return d.strftime(self.DATE_FORMAT)
+        elif isinstance(o, datetime.time):
+            return o.strftime(self.TIME_FORMAT)
+        elif isinstance(o, decimal.Decimal):
+            return str(o)
+        else:
+            return super(DatetimeJSONEncoder, self).default(o)
