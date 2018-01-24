@@ -60,24 +60,28 @@ def label_region(geo_points_list):
     return region_ids
 
 def get_geo_points_from(dt_start, dt_end, type = "violation"):
-    call_incidences = Call_Incidence.objects.filter(create_time__range=[dt_start,dt_end])
-    file_to_wrt_path = settings.BASE_DIR + os.sep + "static" + os.sep + "points.json"
-    file_to_wrt = open(file_to_wrt_path,"w")
+    if type =="violation":
+        start_index = settings.violation_geo_time_dict[dt_start]
+        end_index = settings.violation_geo_time_dict[dt_end]
 
-    call_incidences_to_dump = []
-    for call_incidence in call_incidences:
-        call_incidence_tmp = {}
-        call_incidence_tmp["lng"] = call_incidence.longitude
-        call_incidence_tmp["lat"] = call_incidence.latitude
-        call_incidence_tmp["place"] = call_incidence.place
-        call_incidence_tmp["create_time"] = call_incidence.create_time
-        call_incidences_to_dump.append(call_incidence_tmp)
+        call_incidences = settings.violation_geo_points_list[start_index:end_index]
+        file_to_wrt_path = settings.os.path.join(settings.BASE_DIR, "static", "points.json")
+        file_to_wrt = open(file_to_wrt_path,"w")
 
-    js_str = simplejson.dumps(call_incidences_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
-    file_to_wrt.write(js_str)
+        call_incidences_to_dump = []
+        for call_incidence in call_incidences:
+            call_incidence_tmp = {}
+            call_incidence_tmp["lng"] = call_incidence[1]
+            call_incidence_tmp["lat"] = call_incidence[2]
+            call_incidence_tmp["create_time"] = call_incidence[0]
+            call_incidences_to_dump.append(call_incidence_tmp)
+
+        js_str = simplejson.dumps(call_incidences_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
+        file_to_wrt.write(js_str)
 
 if __name__ == "__main__":
     pass
+    # get_geo_points_from("2016-05-04 17:49:00", "2016-05-04 18:26:00", type="violation")
     # label_holiday(geo_points_list)
     # label_time_segment(geo_points_list)
     # label_region(geo_points_list)
