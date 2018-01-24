@@ -33,7 +33,7 @@ def get_id_for_region(lng,lat):
     return int((num_lng - 1)* n_lng + num_lat)
 
 with open('D://traffic_prediction//data//test.csv','r') as f1:
-    with open('D://traffic_prediction//data//output.csv','w')as f2:
+    with open('D://traffic_prediction//data//addRegionID.csv','w')as f2:
         reader = csv.reader(f1)
         writer = csv.writer(f2)
         for row in csv.reader(f1):
