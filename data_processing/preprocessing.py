@@ -6,9 +6,9 @@ import base, os, json, urllib2, math
 #标记是否是节假日
 def label_holiday(geo_points_list):
     holiday_labels = []
-    for i in geo_points_list:
-        vio_time = geo_points_list[i][0]
-        date_1 = str(vio_time)[0:10]
+    for geo_point in geo_points_list:
+        time_of_point, _, _ = geo_point
+        date_1 = str(time_of_point)[0:10]
         date = date_1.replace('-', '')
         vop_url_request = urllib2.Request(base.SERVER_URL + date)
         vop_response = urllib2.urlopen(vop_url_request)
@@ -20,6 +20,22 @@ def label_holiday(geo_points_list):
 #标记时间段
 def label_time_segment(geo_points_list):
     time_segment_labels = []
+    for geo_point in geo_points_list:
+        time_of_point, _, _ = geo_point
+        vio_hour = time_of_point.hour
+        if  vio_hour>= 0 and vio_hour < 7:
+            time_segment = base.DAWN
+        elif vio_hour >=7 and vio_hour < 9:
+            time_segment = base.MORNING_RUSH
+        elif vio_hour >=9 and vio_hour < 12:
+            time_segment = base.MORNING_WORKING
+        elif vio_hour >=12 and vio_hour < 14:
+            time_segment = base.NOON
+        elif vio_hour >=14 and vio_hour < 20:
+            time_segment = base.AFTERNOON_RUSH
+        else:
+            time_segment = baes.NIGHT
+        time_segment_labels.append(time_segment)
 
     return time_segment_labels
 
@@ -40,8 +56,10 @@ def label_region(geo_points_list):
 
         region_ids.append(region_id)
     return region_ids
+
 if __name__ == "__main__":
     accident_fp =  os.path.join(base.origin_dir, "accident_loc.tsv")
     geo_points_list = base.read_origin_data_into_geo_point_list(accident_fp, max_lines=10)
-    # label_holiday(geo_points_list)
+    label_holiday(geo_points_list)
+    label_time_segment(geo_points_list)
     label_region(geo_points_list)
