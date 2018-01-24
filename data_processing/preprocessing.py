@@ -2,15 +2,18 @@
 from traffic_prediction import settings
 import base, os, math
 
+#标记是否是节假日
 def label_holiday(geo_points_list):
     holiday_labels = []
     #pass
     return holiday_labels
 
+#标记时间段
 def label_time_segment(geo_points_list):
     time_segment_labels = []
     return time_segment_labels
 
+#标记区域id
 def label_region(geo_points_list):
     region_ids = []
     for geo_point in geo_points_list:
@@ -25,10 +28,10 @@ def label_region(geo_points_list):
 
             region_id = i_LNG * base.N_LAT + j_LAT
 
-        region_id.append(region_id)
+        region_ids.append(region_id)
     return region_ids
 if __name__ == "__main__":
     accident_fp =  os.path.join(base.origin_dir, "accident_loc.tsv")
-    geo_points_list = base.read_origin_data_into_geo_point_list(accident_fp)
+    geo_points_list = base.read_origin_data_into_geo_point_list(accident_fp, max_lines=10)
     # label_holiday(geo_points_list)
     label_region(geo_points_list)
