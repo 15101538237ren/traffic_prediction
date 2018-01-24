@@ -6,6 +6,8 @@ origin_dir = os.path.join(data_dir, "origin")
 
 SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+DAWN = 0; MORNING_RUSH = 1; MORNING_WORKING = 2; NOON = 3; AFTERNOON = 4; NIGHT = 5
+
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n"):
     geo_points_List = []
     with open(input_file_path, "r") as input_file:
