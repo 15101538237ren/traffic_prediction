@@ -1,0 +1,21 @@
+import os, datetime
+from traffic_prediction import settings
+
+data_dir = os.path.join(settings.BASE_DIR, "data")
+origin_dir = os.path.join(data_dir, "origin")
+
+SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n"):
+    geo_points_List = []
+    with open(input_file_path, "r") as input_file:
+        line = input_file.readline()
+        while line:
+            line_contents = line.strip(line_end).split(sep)
+            time_of_point = datetime.datetime.strptime(line_contents[1], SECOND_FORMAT)
+            longtitude = float(line_contents[2])
+            latitude = float(line_contents[2])
+            geo_point = [time_of_point, longtitude, latitude]
+            geo_points_List.append(geo_point)
+            line = input_file.readline()
+    return geo_points_List
