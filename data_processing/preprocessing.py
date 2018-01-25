@@ -2,7 +2,7 @@
 
 from traffic_prediction import base
 from traffic_prediction import settings
-import os, json, urllib2, math, simplejson
+import os, json, urllib2, math, simplejson, datetime
 
 #标记是否是节假日
 def label_holiday(geo_points_list):
@@ -59,29 +59,31 @@ def label_region(geo_points_list):
         region_ids.append(region_id)
     return region_ids
 
+##获取起始结束时间段内时间、经纬度
 def get_geo_points_from(dt_start, dt_end, type = "violation"):
-    if type =="violation":
-        start_index = settings.violation_geo_time_dict[dt_start]
-        end_index = settings.violation_geo_time_dict[dt_end]
+    if type == "violation":
+        geo_points_list = settings.violation_geo_points_list
+    elif type == "accident":
+        geo_points_list = settings.accident_geo_points_list
 
-        call_incidences = settings.violation_geo_points_list[start_index:end_index]
-        file_to_wrt_path = settings.os.path.join(settings.BASE_DIR, "static", "points.json")
-        file_to_wrt = open(file_to_wrt_path,"w")
+    start_index, end_index = base.get_geo_time_idxs(geo_points_list, dt_start, dt_end)
+    geo_points = geo_points_list[start_index : end_index + 1]
 
-        call_incidences_to_dump = []
-        for call_incidence in call_incidences:
-            call_incidence_tmp = {}
-            call_incidence_tmp["lng"] = call_incidence[1]
-            call_incidence_tmp["lat"] = call_incidence[2]
-            call_incidence_tmp["create_time"] = call_incidence[0]
-            call_incidences_to_dump.append(call_incidence_tmp)
+    file_to_wrt_path = settings.os.path.join(settings.BASE_DIR, "static", "points.json")
+    file_to_wrt = open(file_to_wrt_path,"w")
 
-        js_str = simplejson.dumps(call_incidences_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
-        file_to_wrt.write(js_str)
+    geo_points_to_dump = []
+    for geo_point in geo_points:
+        geo_point_tmp = {}
+        geo_point_tmp["lng"] = geo_point[1]
+        geo_point_tmp["lat"] = geo_point[2]
+        geo_point_tmp["create_time"] = geo_point[0]
+        geo_points_to_dump.append(geo_point_tmp)
+
+    js_str = simplejson.dumps(geo_points_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
+    file_to_wrt.write(js_str)
 
 if __name__ == "__main__":
-    pass
-    # get_geo_points_from("2016-05-04 17:49:00", "2016-05-04 18:26:00", type="violation")
-    # label_holiday(geo_points_list)
-    # label_time_segment(geo_points_list)
-    # label_region(geo_points_list)
+    dt_start = datetime.datetime.strptime("2016-05-04 18:00:00", base.SECOND_FORMAT)
+    dt_end = datetime.datetime.strptime("2016-05-04 18:23:00", base.SECOND_FORMAT)
+    get_geo_points_from(dt_start, dt_end, type="violation")

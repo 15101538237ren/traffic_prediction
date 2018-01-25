@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, datetime, math, simplejson, decimal
+import os, datetime, math, simplejson, decimal, bisect,time
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_dir = os.path.join(BASE_DIR, "data")
@@ -21,9 +21,9 @@ N_LNG = int(math.ceil((MAX_LNG - MIN_LNG) / LNG_DELTA))
 LNG_COORDINATES = [MIN_LNG + i_LNG * LNG_DELTA for i_LNG in range(N_LNG + 1)]
 LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
+
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n", max_lines = -1):
     geo_points_List = []
-    geo_time_dict = {}
     line_counter = 0
     with open(input_file_path, "r") as input_file:
         line = input_file.readline()
@@ -34,16 +34,50 @@ def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\
             line_contents = line.strip(line_end).split(sep)
             time_of_point = datetime.datetime.strptime(line_contents[1], SECOND_FORMAT)
 
-            time_str = time_of_point.strftime("%Y-%m-%d %H:%M:%S")
-            geo_time_dict[time_str] = line_counter - 1
-
             longtitude = float(line_contents[2])
             latitude = float(line_contents[3])
             geo_point = [time_of_point, longtitude, latitude]
             geo_points_List.append(geo_point)
             line = input_file.readline()
-    return [geo_points_List, geo_time_dict]
+    return geo_points_List
 
+def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
+    time_stamps = [time.mktime(item[0].timetuple()) for item in geo_points_List]
+    dt_start_time_stamp = time.mktime(dt_start.timetuple())
+    dt_end_time_stamp = time.mktime(dt_end.timetuple())
+    left_index = bisect.bisect(time_stamps, dt_start_time_stamp)
+    right_index = bisect.bisect(time_stamps, dt_end_time_stamp) - 1
+    return [left_index, right_index]
+
+def get_all_datetimes(start_time, end_time, time_interval=60):
+    tmp_dt = start_time
+    ret_list = []
+
+    while tmp_dt < end_time:
+        ret_list.append(tmp_dt.strftime(SECOND_FORMAT))
+        tmp_dt += datetime.timedelta(minutes=time_interval)
+    return ret_list
+
+
+error_mapping = {
+    "LOGIN_NEEDED": (1, "login needed"),
+    "PERMISSION_DENIED": (2, "permission denied"),
+    "DATABASE_ERROR": (3, "operate database error"),
+    "ONLY_FOR_AJAX": (4, "the url is only for ajax request")
+}
+class ApiError(Exception):
+    def __init__(self, key, **kwargs):
+        Exception.__init__(self)
+        self.key = key if key in error_mapping else "UNKNOWN"
+        self.kwargs = kwargs
+
+def ajax_required(func):
+    def __decorator(request, *args, **kwargs):
+        if request.is_ajax:
+            return func(request, *args, **kwargs)
+        else:
+            raise ApiError("ONLY_FOR_AJAX")
+    return __decorator
 
 def safe_new_datetime(d):
     kw = [d.year, d.month, d.day]
