@@ -5,4 +5,5 @@ urlpatterns = patterns('visualize.views',
                        url(r'^index$','index',name='index'),
                        url(r'^timeline', 'timeline', name='timeline'),
                        url(r'^gtl','grid_timeline',name='grid_timeline'),
+                       url(r'^query_status','query_status',name='query_status'),
                        )

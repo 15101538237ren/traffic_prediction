@@ -2,7 +2,7 @@
 
 from traffic_prediction import base
 from traffic_prediction import settings
-import os, json, urllib2, math, simplejson
+import os, json, urllib2, math, simplejson, datetime
 
 #标记是否是节假日
 def label_holiday(geo_points_list):
@@ -59,25 +59,31 @@ def label_region(geo_points_list):
         region_ids.append(region_id)
     return region_ids
 
+##获取起始结束时间段内时间、经纬度
 def get_geo_points_from(dt_start, dt_end, type = "violation"):
-    call_incidences = Call_Incidence.objects.filter(create_time__range=[dt_start,dt_end])
-    file_to_wrt_path = settings.BASE_DIR + os.sep + "static" + os.sep + "points.json"
+    if type == "violation":
+        geo_points_list = settings.violation_geo_points_list
+    elif type == "accident":
+        geo_points_list = settings.accident_geo_points_list
+
+    start_index, end_index = base.get_geo_time_idxs(geo_points_list, dt_start, dt_end)
+    geo_points = geo_points_list[start_index : end_index + 1]
+
+    file_to_wrt_path = settings.os.path.join(settings.BASE_DIR, "static", "points.json")
     file_to_wrt = open(file_to_wrt_path,"w")
 
-    call_incidences_to_dump = []
-    for call_incidence in call_incidences:
-        call_incidence_tmp = {}
-        call_incidence_tmp["lng"] = call_incidence.longitude
-        call_incidence_tmp["lat"] = call_incidence.latitude
-        call_incidence_tmp["place"] = call_incidence.place
-        call_incidence_tmp["create_time"] = call_incidence.create_time
-        call_incidences_to_dump.append(call_incidence_tmp)
+    geo_points_to_dump = []
+    for geo_point in geo_points:
+        geo_point_tmp = {}
+        geo_point_tmp["lng"] = geo_point[1]
+        geo_point_tmp["lat"] = geo_point[2]
+        geo_point_tmp["create_time"] = geo_point[0]
+        geo_points_to_dump.append(geo_point_tmp)
 
-    js_str = simplejson.dumps(call_incidences_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
+    js_str = simplejson.dumps(geo_points_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
     file_to_wrt.write(js_str)
 
 if __name__ == "__main__":
-    pass
-    # label_holiday(geo_points_list)
-    # label_time_segment(geo_points_list)
-    # label_region(geo_points_list)
+    dt_start = datetime.datetime.strptime("2016-05-04 18:00:00", base.SECOND_FORMAT)
+    dt_end = datetime.datetime.strptime("2016-05-04 18:23:00", base.SECOND_FORMAT)
+    get_geo_points_from(dt_start, dt_end, type="violation")
