@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-import os, datetime, math, simplejson, decimal, bisect,time
+import os, datetime, math, simplejson, decimal, bisect,time, random
+from data_processing.models import *
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_dir = os.path.join(BASE_DIR, "data")
@@ -49,7 +51,7 @@ def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
     right_index = bisect.bisect(time_stamps, dt_end_time_stamp) - 1
     return [left_index, right_index]
 
-def get_all_datetimes(start_time, end_time, time_interval=60):
+def get_all_datetimes(start_time, end_time, time_interval=30):
     tmp_dt = start_time
     ret_list = []
 
@@ -57,6 +59,92 @@ def get_all_datetimes(start_time, end_time, time_interval=60):
         ret_list.append(tmp_dt.strftime(SECOND_FORMAT))
         tmp_dt += datetime.timedelta(minutes=time_interval)
     return ret_list
+
+def get_grid_timeline(datetime_query,out_data_file, sep= 1000,time_interval = 30):
+    if sep == 500:
+        d_lat = 0.0042
+        d_lng = 0.006
+    else:
+        d_lat = 0.0084
+        d_lng = 0.012
+    n_lat_delta_origin = (MAX_LAT - MIN_LAT)/d_lat
+    n_lat_delta = int(math.ceil(n_lat_delta_origin)) + 1
+    n_lng_delta_origin = (MAX_LNG - MIN_LNG)/d_lng + 1
+    n_lng_delta = int(math.ceil(n_lng_delta_origin))
+
+    lng_coors = [MIN_LNG + i * d_lng for i in range(n_lng_delta)]
+    lat_coors = [MIN_LAT + i * d_lat for i in range(n_lat_delta)]
+    n_lng = len(lng_coors)-1
+    n_lat = len(lat_coors)-1
+    print "grid size = lng: %d * lat: %d\n" % (n_lng, n_lat)
+
+    generate_grid_timelines_for_beijing(datetime_query,lng_coors,lat_coors,out_data_file,sep,time_interval)#,min_lat,max_lat,min_lng,max_lng)
+    print 'min_lat: %f, max_lat: %f, min_lng: %f , max_lng: %f\n' % (MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG)
+    return MIN_LAT, MAX_LAT, MIN_LNG, MAX_LNG
+
+def generate_grid_timelines_for_beijing(datetime_query,lng_coors,lat_coors,out_data_file,sep,time_interval):
+    query_of_violations = Violations_Array.objects.filter(spatial_interval=sep,time_interval=time_interval,create_time=datetime_query)
+    print "generate_grid_timelines_for_beijing %s" % str(datetime_query)
+    print "out_data_file %s" % out_data_file
+    if len(query_of_violations):
+        print "time_interval %d" % time_interval
+        print "sep %d" % sep
+        print "len of query_of_violations %d" % len(query_of_violations)
+        print "query_of_violations[0].content\n %s" % query_of_violations[0].content
+
+        violations_arr = [int(item) for item in query_of_violations[0].content.split(",")]
+
+        output_file = open(out_data_file,"w")
+        n_lat = len(lat_coors)-1
+        n_lng = len(lng_coors)-1
+
+        for it in range(n_lng * n_lat):
+            out_str = "delete rectangle_" + str(it) + ";\n"
+            output_file.write(out_str)
+
+        for i_lng in range(n_lng):
+            for j_lat in range(n_lat):
+                id = i_lng * n_lat + j_lat
+                min_lng1 = lng_coors[i_lng]
+                max_lng1 = lng_coors[i_lng + 1]
+                min_lat1 = lat_coors[j_lat]
+                max_lat1 = lat_coors[j_lat + 1]
+                # center_lng = (min_lng1 + max_lng1)/2.0
+                # center_lat = (min_lat1 + max_lat1)/2.0
+                accident_cnt_of_id = violations_arr[id]
+
+                # if accident_cnt_of_id == 0:
+                #     color = 'white'
+                # elif accident_cnt_of_id == 1:
+                #     color = 'orange'
+                # else:
+                #     color = 'red'
+                random_num = random.random()
+                if random_num > 0.85:
+                    color= 'red'
+                elif random_num > 0.65 and random_num < 0.85:
+                    color = 'yellow'
+                else:
+                    color = 'green'
+                # color_now = 'rgba(,,,)'
+                out_str ='''var rectangle_'''+str(id)+''' = new BMap.Polygon([
+                                new BMap.Point(''' + str(min_lng1) + ''',''' + str(min_lat1) + '''),
+                                new BMap.Point(''' + str(max_lng1) + ''',''' + str(min_lat1) + '''),
+                                new BMap.Point(''' + str(max_lng1) + ''',''' + str(max_lat1) + '''),
+                                new BMap.Point(''' + str(min_lng1) + ''',''' + str(max_lat1) + ''')
+                            ], {strokeColor:"red", strokeWeight:1, strokeOpacity:1,fillColor:"'''+color+'''",fillOpacity:0.5});\n
+                            map.addOverlay(rectangle_'''+str(id)+''');\n'''
+                            # var point_'''+str(id)+''' = new BMap.Point(''' + str(center_lng) + ''',''' + str(center_lat) + ''');\n
+                            # var marker_'''+str(id)+''' = new BMap.Marker(point_'''+str(id)+''');\n
+                            # var label_'''+str(id)+''' = new BMap.Label("'''+str(accident_cnt_of_id)+'''", {position: point_'''+str(id)+''',offset: new BMap.Size(20, -10)});\n
+                            # label_'''+str(id)+'''.setStyle({color: "black",fontSize: "12px",border: "0",backgroundColor: "0.0"});\n
+                            # marker_'''+str(id)+'''.setLabel(label_'''+str(id)+''');\n
+                            # map.addOverlay(marker_'''+str(id)+''');'''
+                output_file.write(out_str)
+        output_file.close()
+        return 0
+    else:
+        return -1
 
 
 error_mapping = {
