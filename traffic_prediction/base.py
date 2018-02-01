@@ -11,6 +11,8 @@ SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
 DAWN = 0; MORNING_RUSH = 1; MORNING_WORKING = 2; NOON = 3; AFTERNOON = 4; NIGHT = 5
 
+segment_list=["DAWN", "MORNING_RUSH", "MORNING_WORKING", "MOON", "AFTERNOON", "NIGHT"]
+
 MIN_LAT = 39.764427; MAX_LAT = 40.033227
 MIN_LNG = 116.214834; MAX_LNG = 116.562834
 LAT_DELTA = 0.0084; LNG_DELTA = 0.012
@@ -25,7 +27,16 @@ LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n", max_lines = -1):
     geo_points_List = []
-    time_segment_list = []#6个元素,每个是个列表,对应为该时间段的所有点
+    time_segment_List = [[],[],[],[],[],[]]#6个元素,每个是个列表,对应为该时间段的所有点
+    # # for i in range(6):
+    # #     time_segment_List[i] = []
+    # time_segment_List[0] = []
+    # time_segment_List[1] = []
+    # time_segment_List[2] = []
+    # time_segment_List[3] = []
+    # time_segment_List[4] = []
+    # time_segment_List[5] = []
+    #
     line_counter = 0
     with open(input_file_path, "r") as input_file:
         line = input_file.readline()
@@ -35,13 +46,28 @@ def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\
                 break
             line_contents = line.strip(line_end).split(sep)
             time_of_point = datetime.datetime.strptime(line_contents[1], SECOND_FORMAT)
-
             longtitude = float(line_contents[2])
             latitude = float(line_contents[3])
             geo_point = [time_of_point, longtitude, latitude]
             geo_points_List.append(geo_point)
+
+            vio_hour = time_of_point.hour
+            if vio_hour >= 0 and vio_hour < 7:
+                time_segment =DAWN
+            elif vio_hour >= 7 and vio_hour < 9:
+                time_segment =MORNING_RUSH
+            elif vio_hour >= 9 and vio_hour < 12:
+                time_segment =MORNING_WORKING
+            elif vio_hour >= 12 and vio_hour < 14:
+                time_segment = NOON
+            elif vio_hour >= 14 and vio_hour < 20:
+                time_segment = AFTERNOON
+            else:
+                time_segment = NIGHT
+            time_segment_List[time_segment].append(geo_point) ##将点添加到相应的segment list中
+
             line = input_file.readline()
-    return geo_points_List,time_segment_list
+    return geo_points_List,time_segment_List
 
 def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
     time_stamps = [time.mktime(item[0].timetuple()) for item in geo_points_List]
