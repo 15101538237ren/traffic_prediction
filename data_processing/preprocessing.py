@@ -2,7 +2,8 @@
 
 from traffic_prediction import base
 from traffic_prediction import settings
-import os, json, urllib2, math, simplejson, datetime
+import os, json, urllib2, math, simplejson, datetime, pickle
+import numpy as np
 
 #标记是否是节假日
 def label_holiday(geo_points_list):
@@ -49,17 +50,20 @@ def label_region(geo_points_list):
 
         region_id = -1 # 默认区域编号是-1，如果点的经纬度不在最大区域内时取-1
 
+
+
         # 如果当前点的经纬度在最大的经纬度范围内
         if (base.MIN_LNG <= lngtitude and lngtitude <= base.MAX_LNG and base.MIN_LAT <= latitude and latitude <= base.MAX_LAT):
             i_LNG = int(math.ceil((float(lngtitude) - base.MIN_LNG) / base.LNG_DELTA)) - 1
             j_LAT = int(math.ceil((float(latitude) - base.MIN_LAT) / base.LAT_DELTA)) - 1
 
             region_id = i_LNG * base.N_LAT + j_LAT
-            region_point_counts[region_id] += 1
+            region_point_counts[region_id] += 1  ##region id内的事件数量
         region_ids.append(region_id)
     return region_ids, region_point_counts
 
 ##获取起始结束时间段内时间、经纬度
+#需要加两个参数, 第一 是否写文件, 第二 时间段值: -1：所有
 def get_geo_points_from(dt_start, dt_end, type = "violation"):
     if type == "violation":
         geo_points_list = settings.violation_geo_points_list
@@ -83,6 +87,7 @@ def get_geo_points_from(dt_start, dt_end, type = "violation"):
     js_str = simplejson.dumps(geo_points_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
     file_to_wrt.write(js_str)
     return geo_points
+
 def generate_grid_timelines_for_beijing(from_dt, end_dt, out_data_file):
     violation_points = get_geo_points_from(from_dt, end_dt, type="violation")
     if len(violation_points):
@@ -130,8 +135,40 @@ def generate_grid_timelines_for_beijing(from_dt, end_dt, out_data_file):
     else:
         return -1
 
+##生成时间段内时间频率矩阵list
+def generate_region_point_frequency(start_time, end_time, day_intervals, outpkl_path):
+    region_point_frequency_matrix = []
+    from_dt = start_time
+    while from_dt < end_time:
+        day = day_interval
+        end_dt = from_dt + datetime.timedelta(days=day_interval)
+        if end_dt > end_time:
+            day = (end_time - from_dt).total_seconds() / 60 / 60 / 24
+            end_dt = end_time
+        violation_points_of_day_interval = get_geo_points_from(from_dt, end_dt, type="violation")
+        _, region_point_counts = label_region(violation_points_of_day_interval)
+        region_point_frequency = [i/day for i in region_point_counts]  # 事件发生频率
+        region_point_frequency_matrix.append(region_point_frequency)
+
+        # js_str = simplejson.dumps(geo_points_to_dump, use_decimal=True, cls=base.DatetimeJSONEncoder)
+        # file_to_wrt.write(js_str)
+        from_dt = end_dt
+
+    with open(outpkl_path, 'wb') as pickle_file:
+        pickle.dump(region_point_frequency_matrix, pickle_file, -1)
+        print "dump %s sucessful" % outpkl_path
+    return region_point_frequency_matrix
+
 
 if __name__ == "__main__":
     dt_start = datetime.datetime.strptime("2016-05-04 18:00:00", base.SECOND_FORMAT)
-    dt_end = datetime.datetime.strptime("2016-05-04 18:23:00", base.SECOND_FORMAT)
-    get_geo_points_from(dt_start, dt_end, type="violation")
+    dt_end = datetime.datetime.strptime("2016-06-04 18:23:00", base.SECOND_FORMAT)
+
+    # dt_start = datetime.datetime.strptime("2016-01-01 00:00:00", base.SECOND_FORMAT)
+    # dt_end = datetime.datetime.strptime("2016-02-01 00:00:00", base.SECOND_FORMAT)
+    # get_geo_points_from(dt_start, dt_end, type="violation")
+    outpkl_path = os.path.join(base.data_dir, "intermediate","region_point_frequency_matrix.pkl")
+    # generate_region_point_frequency(dt_start, dt_end, 7.0, outpkl_path)
+    # with open(outpkl_path,"rb") as pickle_file:
+    #     region_point_frequency_matrix = pickle.load(pickle_file)
+    print region_point_frequency_matrix

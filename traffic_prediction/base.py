@@ -25,6 +25,7 @@ LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n", max_lines = -1):
     geo_points_List = []
+    time_segment_list = []#6个元素,每个是个列表,对应为该时间段的所有点
     line_counter = 0
     with open(input_file_path, "r") as input_file:
         line = input_file.readline()
@@ -40,7 +41,7 @@ def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\
             geo_point = [time_of_point, longtitude, latitude]
             geo_points_List.append(geo_point)
             line = input_file.readline()
-    return geo_points_List
+    return geo_points_List,time_segment_list
 
 def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
     time_stamps = [time.mktime(item[0].timetuple()) for item in geo_points_List]

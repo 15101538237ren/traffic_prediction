@@ -44,6 +44,20 @@ def grid_timeline(request):
 
         return JsonResponse(response_dict)
 
+def region_difference(request):
+    time_interval = 60
+    spatial_interval = 1000
+    day_interval = 7
+    start_time = datetime.datetime.strptime("2016-05-24 00:00:00",SECOND_FORMAT)
+    end_time = datetime.datetime.strptime("2016-12-31 00:00:00",SECOND_FORMAT)
+
+    region_point_frequency_matrix = generate_region_point_frequency(start_time, end_time, day_interval)
+
+    out_js_file = BASE_DIR+'/static/js/region.js'
+    # region_difference_calc(start_time, end_time, time_interval,spatial_interval, out_js_file)
+    return render_to_response('region_diff.html', locals(), context_instance=RequestContext(request))
+
+
 @ajax_required
 def query_status(request):
     time_interval = 30

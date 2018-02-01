@@ -118,5 +118,5 @@ STATICFILES_DIRS = (
 accident_fp = os.path.join(origin_dir, "accident_loc.tsv")
 violation_fp = os.path.join(origin_dir, "violation_loc.tsv")
 
-accident_geo_points_list = read_origin_data_into_geo_point_list(accident_fp, max_lines=200)
-violation_geo_points_list = read_origin_data_into_geo_point_list(violation_fp, max_lines=200)
+accident_geo_points_list,  = read_origin_data_into_geo_point_list(accident_fp, max_lines=100000)
+violation_geo_points_list,  = read_origin_data_into_geo_point_list(violation_fp, max_lines=100000)
