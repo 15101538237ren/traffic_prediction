@@ -143,20 +143,16 @@ def generate_grid_timelines_for_beijing(from_dt, end_dt, out_data_file):
 ##生成时间段内时间频率矩阵list
 def generate_region_point_frequency(start_time, end_time, day_interval, time_segment):
     region_point_frequency_matrix_in_time_segment = []
-    from_dt = start_time
-    while from_dt < end_time:
-        day = float(day_interval)
-        end_dt = from_dt + datetime.timedelta(days=day_interval)
-        if end_dt > end_time:
-            day = (end_time - from_dt).total_seconds() / 60.0 / 60.0 / 24.0
-            end_dt = end_time
+    left_datetimes, right_datetimes = base.generate_timelist(start_time, end_time, day_interval)
+    for lidx, from_dt in enumerate(left_datetimes):
+        end_dt = right_datetimes[lidx]
 
-        points_in_time_segment_and_date_segment = get_geo_points_from(from_dt, end_dt, time_segment, type="violation")
+        day = (end_dt - from_dt).total_seconds() / 60.0 / 60.0 / 24.0
+
+        points_in_time_segment_and_date_segment = get_geo_points_from(from_dt, end_dt, time_segment, type=settings.POINT_TYPE)
         _, region_point_counts_in_time_segment_and_date_segment = label_region(points_in_time_segment_and_date_segment)
         region_point_frequency = [i/day for i in region_point_counts_in_time_segment_and_date_segment]  # 事件发生频率
-        region_point_frequency_matrix_in_time_segment.append(region_point_frequency)
-        # list内每一个元素为一个矩阵
-        from_dt = end_dt
+        region_point_frequency_matrix_in_time_segment.append(region_point_frequency) # list内每一个元素为一个矩阵
 
     return region_point_frequency_matrix_in_time_segment
 
@@ -175,16 +171,8 @@ def generate_frequency_matrix_by_time_segment(start_time, end_time, day_interval
     return frequency_matrix_dict_by_time_segment
 
 
-if __name__ == "__main__":
-    dt_start = datetime.datetime.strptime("2016-05-04 18:00:00", base.SECOND_FORMAT)
-    dt_end = datetime.datetime.strptime("2016-06-04 18:23:00", base.SECOND_FORMAT)
-    day_interval = 7
-    # dt_start = datetime.datetime.strptime("2016-01-01 00:00:00", base.SECOND_FORMAT)
-    # dt_end = datetime.datetime.strptime("2016-02-01 00:00:00", base.SECOND_FORMAT)
-    outpkl_path = os.path.join(base.data_dir, "intermediate", "region_point_frequency_matrix_by_time_segment.pkl")
-    generate_frequency_matrix_by_time_segment(dt_start, dt_end, day_interval, outpkl_path)
+outpkl_path = os.path.join(base.data_dir, "intermediate", "region_point_frequency_matrix_by_time_segment.pkl")
+frequency_matrix_by_time_segment = generate_frequency_matrix_by_time_segment(settings.START_TIME, settings.END_TIME, settings.DAYS_INTERVAL, outpkl_path)
 
-    with open(outpkl_path,"rb") as pickle_file:
-        frequency_matrix_by_time_segment = pickle.load(pickle_file)
-    for i in range(6):
-         print frequency_matrix_by_time_segment[i]
+if __name__ == "__main__":
+    pass

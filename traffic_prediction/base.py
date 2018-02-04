@@ -25,6 +25,7 @@ LNG_COORDINATES = [MIN_LNG + i_LNG * LNG_DELTA for i_LNG in range(N_LNG + 1)]
 LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
 
+# 输入数据路径, 读取max_lines行, 返回所有点的列表，以及对应时间段的点列表
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n", max_lines = -1):
     geo_points_list = []
     time_segment_list = [[] for i in range(6)]#6个元素, 每个是个列表, 对应为该时间段的所有点
@@ -69,6 +70,7 @@ def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\
             line = input_file.readline()
     return geo_points_list, time_segment_list
 
+# 输入时间地理点列表, 输出在(dt_start, dt_end)的时间范围内的点的索引(left_index, right_index)
 def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
     time_stamps = [time.mktime(item[0].timetuple()) for item in geo_points_List]
 
@@ -80,14 +82,22 @@ def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
 
     return [left_index, right_index]
 
-def get_all_datetimes(start_time, end_time, time_interval=30):
-    tmp_dt = start_time
-    ret_list = []
+#给定起始、结束日期时间
+def generate_timelist(start_datetime, end_datetime, time_delta):
+    left_datetimes = []
+    right_datetimes = []
 
-    while tmp_dt < end_time:
-        ret_list.append(tmp_dt.strftime(SECOND_FORMAT))
-        tmp_dt += datetime.timedelta(minutes=time_interval)
-    return ret_list
+    left_dt = start_datetime
+    while left_dt < end_datetime:
+        right_dt = end_datetime if left_dt + time_delta > end_datetime else left_dt + time_delta
+
+        left_datetimes.append(left_dt)
+        right_datetimes.append(right_dt)
+
+        left_dt = right_dt
+    return left_datetimes, right_datetimes
+
+
 
 error_mapping = {
     "LOGIN_NEEDED": (1, "login needed"),

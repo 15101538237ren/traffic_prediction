@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 """
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-import os
+import os, datetime
 from base import origin_dir, read_origin_data_into_geo_point_list
 from os.path import normpath,join
 
@@ -117,6 +117,12 @@ STATICFILES_DIRS = (
 
 accident_fp = os.path.join(origin_dir, "accident_loc.tsv")
 violation_fp = os.path.join(origin_dir, "violation_loc.tsv")
+MAX_LINES = 7000
+MINUTES_INTERVAL = datetime.timedelta(minutes=30)
+DAYS_INTERVAL = datetime.timedelta(days=7)
+POINT_TYPE = "violation"
+START_TIME = datetime.datetime.strptime("2016-05-04 18:00:00", "%Y-%m-%d %H:%M:%S")
+END_TIME = datetime.datetime.strptime("2016-06-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 
-accident_geo_points_list, accident_time_segment_list  = read_origin_data_into_geo_point_list(accident_fp, max_lines=200)
-violation_geo_points_list, violation_time_segment_list  = read_origin_data_into_geo_point_list(violation_fp, max_lines=200)
+accident_geo_points_list, accident_time_segment_list  = read_origin_data_into_geo_point_list(accident_fp, max_lines=MAX_LINES)
+violation_geo_points_list, violation_time_segment_list  = read_origin_data_into_geo_point_list(violation_fp, max_lines=MAX_LINES)
