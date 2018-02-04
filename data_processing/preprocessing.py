@@ -45,15 +45,14 @@ def label_time_segment(geo_points_list):
 def label_region(geo_points_list):
     region_ids = []
     region_point_counts = [0 for item in range(base.N_LNG * base.N_LAT)]
+
     for geo_point in geo_points_list:
         _ , lngtitude, latitude = geo_point
-
         region_id = -1 # 默认区域编号是-1，如果点的经纬度不在最大区域内时取-1
-
-
 
         # 如果当前点的经纬度在最大的经纬度范围内
         if (base.MIN_LNG <= lngtitude and lngtitude <= base.MAX_LNG and base.MIN_LAT <= latitude and latitude <= base.MAX_LAT):
+
             i_LNG = int(math.ceil((float(lngtitude) - base.MIN_LNG) / base.LNG_DELTA)) - 1
             j_LAT = int(math.ceil((float(latitude) - base.MIN_LAT) / base.LAT_DELTA)) - 1
 
@@ -63,38 +62,39 @@ def label_region(geo_points_list):
     return region_ids, region_point_counts
 
 ##获取起始结束时间段内时间、经纬度
-#需要加两个参数, 第一 是否写文件, 第二 时间段值: -1：所有   用0到5这六个数字表示一天内的六个time_segment
-def get_geo_points_from(dt_start, dt_end, time_segment, type = "violation"):
+def get_geo_points_from(dt_start, dt_end, time_segment, type = "violation", write = True):
     if type == "violation":
-        geo_points_list = settings.violation_geo_points_list
-        time_segment_list = settings.violation_time_segment_list
+        if time_segment > -1:
+            points_in_time_segment = settings.violation_time_segment_list[time_segment] #获取给定time_segment内所有点
+        else:
+            points_in_time_segment = settings.violation_geo_points_list
     elif type == "accident":
-        geo_points_list = settings.accident_geo_points_list
-        time_segment_list = settings.accident_time_segment_list
+        if time_segment > -1:
+            points_in_time_segment = settings.accident_time_segment_list[time_segment]
+        else:
+            points_in_time_segment = settings.accident_geo_points_list
 
-    points_in_time_segment = time_segment_list[time_segment] #获取给定time_segment内所有点
-    start_index, end_index = base.get_geo_time_idxs(geo_points_list, dt_start, dt_end)
-    geo_points = geo_points_list[start_index : end_index + 1]
+    start_index, end_index = base.get_geo_time_idxs(points_in_time_segment, dt_start, dt_end)
+    points_in_time_segment_and_date_segment = points_in_time_segment[start_index : end_index + 1]
 
-    points_in_time_segment_and_date_segment = [point for point in geo_points if point in points_in_time_segment ]
-    ##取两个list的交集， 得到落在起始日期内的给定时间段内的所有点
-    file_to_wrt_path = settings.os.path.join(settings.BASE_DIR, "static", "points.json")
-    file_to_wrt = open(file_to_wrt_path,"w")
+    if write:
+        file_to_wrt_path = settings.os.path.join(settings.BASE_DIR, "static", "points.json")
+        file_to_wrt = open(file_to_wrt_path,"w")
 
-    geo_points_to_dump = []
-    for geo_point in geo_points:
-        geo_point_tmp = {}
-        geo_point_tmp["lng"] = geo_point[1]
-        geo_point_tmp["lat"] = geo_point[2]
-        geo_point_tmp["create_time"] = geo_point[0]
-        geo_points_to_dump.append(geo_point_tmp)
+        geo_points_to_dump = []
+        for geo_point in points_in_time_segment_and_date_segment:
+            geo_point_tmp = {}
+            geo_point_tmp["lng"] = geo_point[1]
+            geo_point_tmp["lat"] = geo_point[2]
+            geo_point_tmp["create_time"] = geo_point[0]
+            geo_points_to_dump.append(geo_point_tmp)
 
-    js_str = simplejson.dumps(geo_points_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
-    file_to_wrt.write(js_str)
-    return geo_points, points_in_time_segment_and_date_segment
+        js_str = simplejson.dumps(geo_points_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
+        file_to_wrt.write(js_str)
+    return points_in_time_segment_and_date_segment
 
 def generate_grid_timelines_for_beijing(from_dt, end_dt, out_data_file):
-    violation_points,_ = get_geo_points_from(from_dt, end_dt, type="violation")
+    violation_points = get_geo_points_from(from_dt, end_dt, -1, type="violation", write=True)
     if len(violation_points):
         _, region_point_counts = label_region(violation_points)
 
@@ -145,31 +145,29 @@ def generate_region_point_frequency(start_time, end_time, day_interval, time_seg
     region_point_frequency_matrix_in_time_segment = []
     from_dt = start_time
     while from_dt < end_time:
-        day = day_interval
+        day = float(day_interval)
         end_dt = from_dt + datetime.timedelta(days=day_interval)
         if end_dt > end_time:
-            day = (end_time - from_dt).total_seconds() / 60 / 60 / 24
+            day = (end_time - from_dt).total_seconds() / 60.0 / 60.0 / 24.0
             end_dt = end_time
-        _, points_in_time_segment_and_date_segment = get_geo_points_from(from_dt, end_dt,time_segment, type="violation")
+
+        points_in_time_segment_and_date_segment = get_geo_points_from(from_dt, end_dt, time_segment, type="violation")
         _, region_point_counts_in_time_segment_and_date_segment = label_region(points_in_time_segment_and_date_segment)
         region_point_frequency = [i/day for i in region_point_counts_in_time_segment_and_date_segment]  # 事件发生频率
         region_point_frequency_matrix_in_time_segment.append(region_point_frequency)
         # list内每一个元素为一个矩阵
-        # js_str = simplejson.dumps(geo_points_to_dump, use_decimal=True, cls=base.DatetimeJSONEncoder)
-        # file_to_wrt.write(js_str)
         from_dt = end_dt
-    # with open(outpkl_path, 'wb') as pickle_file:
-    #     pickle.dump(region_point_frequency_matrix, pickle_file, -1)
-    #     print "dump %s sucessful" % outpkl_path
 
     return region_point_frequency_matrix_in_time_segment
 
 def generate_frequency_matrix_by_time_segment(start_time, end_time, day_interval, outpkl_path):
 
     frequency_matrix_dict_by_time_segment = {}
+
     for i in range(6):
-        frequency_matrix_dict_by_time_segment[i] = generate_region_point_frequency(start_time, end_time, day_interval,i)
-    #创建字典，key为time_segment值，value为矩阵list，list内元素为segment对应的频率矩阵
+        # 创建字典，key为time_segment值，value为矩阵list，list内元素为segment对应的频率矩阵
+        frequency_matrix_dict_by_time_segment[i] = generate_region_point_frequency(start_time, end_time, day_interval, i)
+
     with open(outpkl_path, 'wb') as pickle_file:
         pickle.dump(frequency_matrix_dict_by_time_segment, pickle_file, -1)
         print "dump %s sucessful" % outpkl_path
@@ -183,9 +181,9 @@ if __name__ == "__main__":
     day_interval = 7
     # dt_start = datetime.datetime.strptime("2016-01-01 00:00:00", base.SECOND_FORMAT)
     # dt_end = datetime.datetime.strptime("2016-02-01 00:00:00", base.SECOND_FORMAT)
-    # get_geo_points_from(dt_start, dt_end, type="violation")
-    outpkl_path = os.path.join(base.data_dir, "intermediate","region_point_frequency_matrix_by_time_segment.pkl")
+    outpkl_path = os.path.join(base.data_dir, "intermediate", "region_point_frequency_matrix_by_time_segment.pkl")
     generate_frequency_matrix_by_time_segment(dt_start, dt_end, day_interval, outpkl_path)
+
     with open(outpkl_path,"rb") as pickle_file:
         frequency_matrix_by_time_segment = pickle.load(pickle_file)
     for i in range(6):

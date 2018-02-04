@@ -64,7 +64,7 @@ def query_status(request):
     datetime_query = request.POST.get("query_dt","2016-05-04 18:00:00")
     from_dt = datetime.datetime.strptime(datetime_query,SECOND_FORMAT)
     end_dt = from_dt + datetime.timedelta(minutes=time_interval)
-    get_geo_points_from(from_dt, end_dt, type="violation")
+    get_geo_points_from(from_dt, end_dt, -1, type="violation")
     addr = '/static/points.json'
     response_dict = {}
     response_dict["code"] = 0

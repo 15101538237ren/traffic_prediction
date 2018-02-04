@@ -26,17 +26,9 @@ LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
 
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n", max_lines = -1):
-    geo_points_List = []
-    time_segment_List = [[],[],[],[],[],[]]#6个元素,每个是个列表,对应为该时间段的所有点
-    # # for i in range(6):
-    # #     time_segment_List[i] = []
-    # time_segment_List[0] = []
-    # time_segment_List[1] = []
-    # time_segment_List[2] = []
-    # time_segment_List[3] = []
-    # time_segment_List[4] = []
-    # time_segment_List[5] = []
-    #
+    geo_points_list = []
+    time_segment_list = [[] for i in range(6)]#6个元素, 每个是个列表, 对应为该时间段的所有点
+
     line_counter = 0
     with open(input_file_path, "r") as input_file:
         line = input_file.readline()
@@ -45,36 +37,47 @@ def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\
             if max_lines > 0 and line_counter > max_lines:
                 break
             line_contents = line.strip(line_end).split(sep)
+
             time_of_point = datetime.datetime.strptime(line_contents[1], SECOND_FORMAT)
             longtitude = float(line_contents[2])
             latitude = float(line_contents[3])
+
             geo_point = [time_of_point, longtitude, latitude]
-            geo_points_List.append(geo_point)
+            geo_points_list.append(geo_point)
 
             vio_hour = time_of_point.hour
+
             if vio_hour >= 0 and vio_hour < 7:
-                time_segment =DAWN
+                time_segment = DAWN
+
             elif vio_hour >= 7 and vio_hour < 9:
-                time_segment =MORNING_RUSH
+                time_segment = MORNING_RUSH
+
             elif vio_hour >= 9 and vio_hour < 12:
-                time_segment =MORNING_WORKING
+                time_segment = MORNING_WORKING
+
             elif vio_hour >= 12 and vio_hour < 14:
                 time_segment = NOON
+
             elif vio_hour >= 14 and vio_hour < 20:
                 time_segment = AFTERNOON
+
             else:
                 time_segment = NIGHT
-            time_segment_List[time_segment].append(geo_point) ##将点添加到相应的segment list中
+            time_segment_list[time_segment].append(geo_point) ##将点添加到相应的segment list中
 
             line = input_file.readline()
-    return geo_points_List,time_segment_List
+    return geo_points_list, time_segment_list
 
 def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
     time_stamps = [time.mktime(item[0].timetuple()) for item in geo_points_List]
+
     dt_start_time_stamp = time.mktime(dt_start.timetuple())
     dt_end_time_stamp = time.mktime(dt_end.timetuple())
+
     left_index = bisect.bisect(time_stamps, dt_start_time_stamp)
     right_index = bisect.bisect(time_stamps, dt_end_time_stamp) - 1
+
     return [left_index, right_index]
 
 def get_all_datetimes(start_time, end_time, time_interval=30):
