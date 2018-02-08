@@ -78,7 +78,7 @@ def get_geo_points_from(dt_start, dt_end, time_segment, type = "violation", writ
     points_in_time_segment_and_date_segment = points_in_time_segment[start_index : end_index + 1]
 
     if write:
-        file_to_wrt_path = settings.os.path.join(settings.BASE_DIR, "static", "points.json")
+        file_to_wrt_path = settings.os.path.join(settings.JSON_DIR, "geo_points.json")
         file_to_wrt = open(file_to_wrt_path,"w")
 
         geo_points_to_dump = []
@@ -142,6 +142,8 @@ def generate_grid_timelines_for_beijing(from_dt, end_dt, out_data_file):
 
 ##生成时间段内时间频率矩阵list
 def generate_region_point_frequency(start_time, end_time, day_interval, time_segment):
+    max_frequency = -999999
+
     region_point_frequency_matrix_in_time_segment = []
     left_datetimes, right_datetimes = base.generate_timelist(start_time, end_time, day_interval)
     for lidx, from_dt in enumerate(left_datetimes):
@@ -151,28 +153,37 @@ def generate_region_point_frequency(start_time, end_time, day_interval, time_seg
 
         points_in_time_segment_and_date_segment = get_geo_points_from(from_dt, end_dt, time_segment, type=settings.POINT_TYPE)
         _, region_point_counts_in_time_segment_and_date_segment = label_region(points_in_time_segment_and_date_segment)
-        region_point_frequency = [i/day for i in region_point_counts_in_time_segment_and_date_segment]  # 事件发生频率
+        region_point_frequency = [ ]  # 事件发生频率
+        for i in region_point_counts_in_time_segment_and_date_segment:
+            freq = i/day
+            region_point_frequency.append(freq)
+
+            max_frequency = freq if freq > max_frequency else max_frequency
         region_point_frequency_matrix_in_time_segment.append(region_point_frequency) # list内每一个元素为一个矩阵
 
-    return region_point_frequency_matrix_in_time_segment
+    return region_point_frequency_matrix_in_time_segment, max_frequency
 
-def generate_frequency_matrix_by_time_segment(start_time, end_time, day_interval, outpkl_path):
-
-    frequency_matrix_dict_by_time_segment = {}
-
-    for i in range(6):
-        # 创建字典，key为time_segment值，value为矩阵list，list内元素为segment对应的频率矩阵
-        frequency_matrix_dict_by_time_segment[i] = generate_region_point_frequency(start_time, end_time, day_interval, i)
-
+def generate_frequency_matrix(start_time, end_time, day_intervals, outpkl_path):
+    frequency_matrix_dict = {}
+    max_frequency_dict = {}
+    for day_interval in day_intervals:
+        frequency_matrix_dict[day_interval] = {}
+        max_frequency_dict[day_interval] = {}
+        max_frequency_of_day = -9999999
+        for i in range(6):
+            # 创建字典，key为time_segment值，value为矩阵list，list内元素为segment对应的频率矩阵
+            frequency_matrix_dict[day_interval][i], max_freq = generate_region_point_frequency(start_time, end_time, day_interval, i)
+            max_frequency_of_day = max_freq if max_freq > max_frequency_of_day else max_frequency_of_day
+        max_frequency_dict[day_interval] = max_frequency_of_day
     with open(outpkl_path, 'wb') as pickle_file:
-        pickle.dump(frequency_matrix_dict_by_time_segment, pickle_file, -1)
+        pickle.dump(frequency_matrix_dict, pickle_file, -1)
         print "dump %s sucessful" % outpkl_path
-
-    return frequency_matrix_dict_by_time_segment
+    return [frequency_matrix_dict, max_frequency_dict]
 
 
 outpkl_path = os.path.join(base.data_dir, "intermediate", "region_point_frequency_matrix_by_time_segment.pkl")
-frequency_matrix_by_time_segment = generate_frequency_matrix_by_time_segment(settings.START_TIME, settings.END_TIME, settings.DAYS_INTERVAL, outpkl_path)
+frequency_matrix_dict, max_frequency_dict = generate_frequency_matrix(settings.START_TIME, settings.END_TIME, settings.DAYS_INTERVALS , outpkl_path)
+print outpkl_path
 
 if __name__ == "__main__":
     pass
