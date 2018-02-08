@@ -180,10 +180,13 @@ def generate_frequency_matrix(start_time, end_time, day_intervals, outpkl_path):
         print "dump %s sucessful" % outpkl_path
     return [frequency_matrix_dict, max_frequency_dict]
 
-
+def generate_color_matrix(freq_matrix, max_val):
+    color_matrix = []
+    for freq_sub_matrix in freq_matrix:
+        color_matrix.append([int(round(255 * min(freq / max_val, 1.0), 2)) for freq in freq_sub_matrix])
+    return color_matrix
 outpkl_path = os.path.join(base.data_dir, "intermediate", "region_point_frequency_matrix_by_time_segment.pkl")
 frequency_matrix_dict, max_frequency_dict = generate_frequency_matrix(settings.START_TIME, settings.END_TIME, settings.DAYS_INTERVALS , outpkl_path)
-print outpkl_path
 
 if __name__ == "__main__":
     pass

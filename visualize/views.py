@@ -51,9 +51,10 @@ def freqency_timeline(request):
         return_dict = {}
         return_dict['datetime_list'], _ = generate_timelist(settings.START_TIME, settings.END_TIME, datetime.timedelta(days=time_period_selected))
         return_dict['slider_cnts'] = len(return_dict['datetime_list'])
+        return_dict['grid_boundaries'] = GRID_LNG_LAT_COORDS
         frequency_matrix = frequency_matrix_dict[datetime.timedelta(days=time_period_selected)][time_segment_selected]
         max_frequency = max_frequency_dict[datetime.timedelta(days=time_period_selected)]
-
+        return_dict['color_matrix'] = generate_color_matrix(frequency_matrix, max_frequency)
 
         json_fp = settings.os.path.join(settings.JSON_DIR, "freq_matrix.json")
         with open(json_fp,"w") as json_file:

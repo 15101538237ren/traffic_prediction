@@ -117,14 +117,16 @@ STATICFILES_DIRS = (
 
 accident_fp = os.path.join(origin_dir, "accident_loc.tsv")
 violation_fp = os.path.join(origin_dir, "violation_loc.tsv")
-MAX_LINES = 7000
+MAX_LINES = 200000
 MINUTES_INTERVAL = datetime.timedelta(minutes=30)
 TIME_PERIODS = {u'3天': 3, u'7天': 7, u'30天': 30}
 DAYS_INTERVALS = [datetime.timedelta(days=val) for val in TIME_PERIODS.values()]
-POINT_TYPE = "violation"
-START_TIME = datetime.datetime.strptime("2016-05-04 18:00:00", "%Y-%m-%d %H:%M:%S")
-END_TIME = datetime.datetime.strptime("2016-06-04 18:00:00", "%Y-%m-%d %H:%M:%S")
+POINT_TYPE = "accident"
+#START_TIME = datetime.datetime.strptime("2016-05-04 18:00:00", "%Y-%m-%d %H:%M:%S")
+#END_TIME = datetime.datetime.strptime("2016-06-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 
+START_TIME = datetime.datetime.strptime("2016-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
+END_TIME = datetime.datetime.strptime("2016-04-01 00:00:00", "%Y-%m-%d %H:%M:%S")
 JSON_DIR = os.path.join(BASE_DIR, "static", "json")
 
 TIME_SEGMENTS = {u'凌晨 0:00-7:00': 0, u'早高峰 7:00-9:00': 1, u'早工作 9:00-12:00': 2, u'中午 12:00-14:00': 3, u'下午 14:00-20:00': 4, u'晚间 20:00-24:00': 5}

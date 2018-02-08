@@ -4,6 +4,7 @@
 {% block head %}
     <script type="text/javascript">
     var datetime_list;
+    var datetime_idx;
     function get_datetime(idx)
     {
         return datetime_list[idx];
@@ -33,6 +34,9 @@
                 if (result["code"] == 0) {
                 $.get(result["addr"]).done(function (json_obj) {
                     datetime_list = json_obj.datetime_list;
+                    $("#slider3").remove();
+
+                    datetime_idx = 0;
                     var $slider3=$("<div id='slider3'></div>");
                     $("#slider_div").append($slider3);
 
@@ -45,12 +49,17 @@
                         range: "min",
                         slide: function(event, ui) {
                           $("#datetimepicker").val(get_datetime(ui.value));
+                          datetime_idx = ui.value;
+                          redraw_freqency(color_matrix, grid_boundaries, stroke_color, datetime_idx);
                         }
                       });
                     }
                     $("#slider_div").show();
-                    var freq_marix = frequency_matrix;
-                    redraw_freqency(freq_marix);
+                    var grid_boundaries = json_obj.grid_boundaries;
+                    var color_matrix = json_obj.color_matrix;
+                    var stroke_color = "red";
+
+                    redraw_freqency(color_matrix, grid_boundaries, stroke_color, datetime_idx);
                     });
             }
             else {
@@ -128,8 +137,34 @@
         language:'zh-CN',
         autoclose:1,
         minuteStep:1});
-    function redraw_freqency(freq_marix) {
+
+    var gradient = new gradientColor('#FFFFFF','#FF0000',255);
+    function redraw_freqency(color_matrix, grid_boundaries, stroke_color, datetime_idx) {
         map.clearOverlays();
+
+        var color_array = color_matrix[datetime_idx];
+        for (var i = 0; i < grid_boundaries.length; i++  ) {
+            var min_lng = grid_boundaries[i][0];
+            var max_lng = grid_boundaries[i][1];
+            var min_lat = grid_boundaries[i][2];
+            var max_lat = grid_boundaries[i][3];
+            var color = color_array[i];
+
+            var polygon = new BMap.Polygon([
+                new BMap.Point(min_lng, min_lat),
+                new BMap.Point(max_lng, min_lat),
+                new BMap.Point(max_lng, max_lat),
+                new BMap.Point(min_lng, max_lat)
+            ], {
+                strokeColor: stroke_color,
+                strokeWeight: 1,
+                strokeOpacity: 1,
+                fillColor: gradient[color],
+                fillOpacity: 0.5
+            });
+
+            map.addOverlay(polygon);
+        }
     }
 </script>
 

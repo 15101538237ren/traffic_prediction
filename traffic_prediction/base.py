@@ -24,6 +24,7 @@ N_LNG = int(math.ceil((MAX_LNG - MIN_LNG) / LNG_DELTA))
 LNG_COORDINATES = [MIN_LNG + i_LNG * LNG_DELTA for i_LNG in range(N_LNG + 1)]
 LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
+GRID_LNG_LAT_COORDS = [[LNG_COORDINATES[i_LNG], LNG_COORDINATES[i_LNG + 1], LAT_COORDINATES[j_LAT], LAT_COORDINATES[j_LAT + 1]]  for i_LNG in range(N_LNG) for j_LAT in range(N_LAT)]
 
 # 输入数据路径, 读取max_lines行, 返回所有点的列表，以及对应时间段的点列表
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n", max_lines = -1):
