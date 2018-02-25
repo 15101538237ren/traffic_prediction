@@ -3,7 +3,9 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.http import JsonResponse
 from traffic_prediction.base import *
+from traffic_prediction.helpers import *
 from data_processing.preprocessing import *
+
 import simplejson
 
 # Create your views here.
@@ -42,7 +44,7 @@ def grid_timeline(request):
 def freqency_timeline(request):
     if request.method == 'GET':
         time_period = settings.TIME_PERIODS
-        time_segment = settings.TIME_SEGMENTS
+        time_segment = base.TIME_SEGMENTS_LABELS
         date_start = settings.START_TIME
         return render_to_response('freqency_timeline.html', locals(), context_instance=RequestContext(request))
     else:
@@ -52,13 +54,15 @@ def freqency_timeline(request):
         return_dict['datetime_list'], _ = generate_timelist(settings.START_TIME, settings.END_TIME, datetime.timedelta(days=time_period_selected))
         return_dict['slider_cnts'] = len(return_dict['datetime_list'])
         return_dict['grid_boundaries'] = GRID_LNG_LAT_COORDS
-        frequency_matrix = frequency_matrix_dict[datetime.timedelta(days=time_period_selected)][time_segment_selected]
-        max_frequency = max_frequency_dict[datetime.timedelta(days=time_period_selected)]
+        freq_matrix_dict, max_freq_dict,_ = obtain_frequency_matrix()
+        frequency_matrix = freq_matrix_dict[datetime.timedelta(days=time_period_selected)][time_segment_selected]
+        max_frequency = max_freq_dict[datetime.timedelta(days=time_period_selected)]
+
         return_dict['color_matrix'] = generate_color_matrix(frequency_matrix, max_frequency)
 
         json_fp = settings.os.path.join(settings.JSON_DIR, "freq_matrix.json")
         with open(json_fp,"w") as json_file:
-            json_str = simplejson.dumps(return_dict, cls=base.DatetimeJSONEncoder)
+            json_str = simplejson.dumps(return_dict, cls=DatetimeJSONEncoder)
             json_file.write(json_str)
             print "dump %s sucessful!" % json_fp
         addr = '/static/json/freq_matrix.json'
@@ -77,7 +81,7 @@ def query_status(request):
     from_dt = datetime.datetime.strptime(datetime_query, SECOND_FORMAT)
     end_dt = from_dt + settings.MINUTES_INTERVAL
 
-    get_geo_points_from(from_dt, end_dt, -1, type=settings.POINT_TYPE)
+    get_geo_points_from(from_dt, end_dt, -1, type=base.POINT_TYPE)
     addr = '/static/json/geo_points.json'
     response_dict = {}
     response_dict["code"] = 0

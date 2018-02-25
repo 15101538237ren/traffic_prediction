@@ -2,9 +2,9 @@
 
 from traffic_prediction import base
 from traffic_prediction import settings
-import os, json, urllib2, math, simplejson, datetime, pickle
-import numpy as np
+import os, json, urllib2, math, simplejson, datetime, time, pickle
 
+frequency_matrix_dict, max_frequency_dict, left_datetimes_arr, geo_points_list, time_segment_list = None, None, None, None, None
 #标记是否是节假日
 def label_holiday(geo_points_list):
     holiday_labels = []
@@ -24,19 +24,8 @@ def label_time_segment(geo_points_list):
     time_segment_labels = []
     for geo_point in geo_points_list:
         time_of_point, _, _ = geo_point
-        vio_hour = time_of_point.hour
-        if  vio_hour>= 0 and vio_hour < 7:
-            time_segment = base.DAWN
-        elif vio_hour >=7 and vio_hour < 9:
-            time_segment = base.MORNING_RUSH
-        elif vio_hour >=9 and vio_hour < 12:
-            time_segment = base.MORNING_WORKING
-        elif vio_hour >=12 and vio_hour < 14:
-            time_segment = base.NOON
-        elif vio_hour >=14 and vio_hour < 20:
-            time_segment = base.AFTERNOON
-        else:
-            time_segment = base.NIGHT
+        hour = time_of_point.hour
+        time_segment = base.time_segment_judge(hour, base.IS_TIME_SEGMENT)
         time_segment_labels.append(time_segment)
 
     return time_segment_labels
@@ -62,17 +51,7 @@ def label_region(geo_points_list):
     return region_ids, region_point_counts
 
 ##获取起始结束时间段内时间、经纬度
-def get_geo_points_from(dt_start, dt_end, time_segment, type = "violation", write = True):
-    if type == "violation":
-        if time_segment > -1:
-            points_in_time_segment = settings.violation_time_segment_list[time_segment] #获取给定time_segment内所有点
-        else:
-            points_in_time_segment = settings.violation_geo_points_list
-    elif type == "accident":
-        if time_segment > -1:
-            points_in_time_segment = settings.accident_time_segment_list[time_segment]
-        else:
-            points_in_time_segment = settings.accident_geo_points_list
+def get_geo_points_from(points_in_time_segment, dt_start, dt_end, write = True):
 
     start_index, end_index = base.get_geo_time_idxs(points_in_time_segment, dt_start, dt_end)
     points_in_time_segment_and_date_segment = points_in_time_segment[start_index : end_index + 1]
@@ -94,9 +73,10 @@ def get_geo_points_from(dt_start, dt_end, time_segment, type = "violation", writ
     return points_in_time_segment_and_date_segment
 
 def generate_grid_timelines_for_beijing(from_dt, end_dt, out_data_file):
-    violation_points = get_geo_points_from(from_dt, end_dt, -1, type="violation", write=True)
-    if len(violation_points):
-        _, region_point_counts = label_region(violation_points)
+    geo_points_list_tmp, _ = obtain_origin_data()
+    geo_points = get_geo_points_from(geo_points_list_tmp, from_dt, end_dt, write=True)
+    if len(geo_points):
+        _, region_point_counts = label_region(geo_points)
 
         output_file = open(out_data_file,"w")
 
@@ -141,21 +121,19 @@ def generate_grid_timelines_for_beijing(from_dt, end_dt, out_data_file):
         return -1
 
 ##生成时间段内时间频率矩阵list
-def generate_region_point_frequency(start_time, end_time, day_interval, time_segment):
+def generate_region_point_frequency(time_segment_list_tmp,left_datetimes, right_datetimes, time_segment_i):
     max_frequency = -999999
 
     region_point_frequency_matrix_in_time_segment = []
-    left_datetimes, right_datetimes = base.generate_timelist(start_time, end_time, day_interval)
     for lidx, from_dt in enumerate(left_datetimes):
         end_dt = right_datetimes[lidx]
-
         day = (end_dt - from_dt).total_seconds() / 60.0 / 60.0 / 24.0
-
-        points_in_time_segment_and_date_segment = get_geo_points_from(from_dt, end_dt, time_segment, type=settings.POINT_TYPE)
+        points_in_time_segment_and_date_segment = get_geo_points_from(time_segment_list_tmp, from_dt, end_dt, write=False)
         _, region_point_counts_in_time_segment_and_date_segment = label_region(points_in_time_segment_and_date_segment)
-        region_point_frequency = [ ]  # 事件发生频率
-        for i in region_point_counts_in_time_segment_and_date_segment:
-            freq = i/day
+
+        region_point_frequency = []  # 事件发生频率
+        for region_point_count in region_point_counts_in_time_segment_and_date_segment:
+            freq = region_point_count/day/base.TIME_SEGMENT_HOURS[time_segment_i]
             region_point_frequency.append(freq)
 
             max_frequency = freq if freq > max_frequency else max_frequency
@@ -163,30 +141,98 @@ def generate_region_point_frequency(start_time, end_time, day_interval, time_seg
 
     return region_point_frequency_matrix_in_time_segment, max_frequency
 
-def generate_frequency_matrix(start_time, end_time, day_intervals, outpkl_path):
+def output_freq_time_series_data(day_intervals_str, time_segment_i, left_datetimes, freq_matrix):
+    out_dir_fp = os.path.join(base.freqency_data_dir, day_intervals_str, 'seg_' + str(time_segment_i))
+    if not os.path.exists(out_dir_fp):
+        os.makedirs(out_dir_fp)
+
+    for rid in range(base.N_LNG * base.N_LAT):
+        out_file_fp = os.path.join(out_dir_fp, str(rid) + '.tsv')
+        with open(out_file_fp, "w") as out_file:
+            for lidx, ldt in enumerate(left_datetimes):
+                ldt_str = (ldt + base.get_timedelta_of_timesegment(time_segment_i)).strftime(base.SECOND_FORMAT)
+                freq_str = str(round(freq_matrix[lidx][rid],4))
+                out_file.write(ldt_str + '\t' + freq_str + '\n')
+    print 'write freq of %s %s sucessful' % (day_intervals_str, str(time_segment_i))
+
+def obtain_origin_data():
+    global geo_points_list, time_segment_list
+    if not geo_points_list:
+        geo_points_list, time_segment_list = base.read_origin_data_into_geo_point_list(base.FILE_FP, max_lines=base.MAX_LINES)
+    return [geo_points_list, time_segment_list]
+
+def generate_frequency_matrix(start_time, end_time, day_intervals, outpkl_path, dump=False):
     frequency_matrix_dict = {}
     max_frequency_dict = {}
-    for day_interval in day_intervals:
+    left_datetimes_arr = []
+    _, time_segment_list_tmp = obtain_origin_data()
+    for idx, day_interval in enumerate(day_intervals):
+        print 'start generate freq matrix of %s' % settings.DAYS_INTERVALS_LABEL[idx]
+        t0 = time.time()
+
+        left_datetimes, right_datetimes = base.generate_timelist(start_time, end_time, day_interval)
         frequency_matrix_dict[day_interval] = {}
         max_frequency_dict[day_interval] = {}
         max_frequency_of_day = -9999999
-        for i in range(6):
+
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            print 'start time_segment %d' % time_segment_i
+            tt0 = time.time()
             # 创建字典，key为time_segment值，value为矩阵list，list内元素为segment对应的频率矩阵
-            frequency_matrix_dict[day_interval][i], max_freq = generate_region_point_frequency(start_time, end_time, day_interval, i)
+            frequency_matrix_dict[day_interval][time_segment_i], max_freq = generate_region_point_frequency(time_segment_list_tmp[time_segment_i],left_datetimes, right_datetimes, time_segment_i)
             max_frequency_of_day = max_freq if max_freq > max_frequency_of_day else max_frequency_of_day
+
+            tt1 = time.time()
+            print 'finish time_segment %d in %.2f seconds' % (time_segment_i, tt1 - tt0)
         max_frequency_dict[day_interval] = max_frequency_of_day
-    with open(outpkl_path, 'wb') as pickle_file:
-        pickle.dump(frequency_matrix_dict, pickle_file, -1)
-        print "dump %s sucessful" % outpkl_path
-    return [frequency_matrix_dict, max_frequency_dict]
+        t1 = time.time()
+        print 'finish generate freq matrix of %s in %.2f seconds' % (settings.DAYS_INTERVALS_LABEL[idx], t1-t0)
+        left_datetimes_arr.append(left_datetimes)
+    if dump:
+        with open(outpkl_path, 'wb') as pickle_file:
+            pickle.dump(frequency_matrix_dict, pickle_file, -1)
+            pickle.dump(max_frequency_dict, pickle_file, -1)
+            pickle.dump(left_datetimes_arr, pickle_file, -1)
+            print "dump %s sucessful" % outpkl_path
+    return [frequency_matrix_dict, max_frequency_dict, left_datetimes_arr]
 
 def generate_color_matrix(freq_matrix, max_val):
     color_matrix = []
     for freq_sub_matrix in freq_matrix:
-        color_matrix.append([int(round(255 * min(freq / max_val, 1.0), 2)) for freq in freq_sub_matrix])
+        color_matrix.append([int(round(255 * min(freq / (0.5 * max_val), 1.0), 2)) for freq in freq_sub_matrix])
     return color_matrix
-outpkl_path = os.path.join(base.data_dir, "intermediate", "region_point_frequency_matrix_by_time_segment.pkl")
-frequency_matrix_dict, max_frequency_dict = generate_frequency_matrix(settings.START_TIME, settings.END_TIME, settings.DAYS_INTERVALS , outpkl_path)
 
+def obtain_frequency_matrix():
+    global frequency_matrix_dict, max_frequency_dict, left_datetimes_arr
+
+    if not frequency_matrix_dict:
+        if not os.path.exists(base.freq_matrix_pkl_path):
+            frequency_matrix_dict, max_frequency_dict, left_datetimes_arr = generate_frequency_matrix(settings.START_TIME, settings.END_TIME, settings.DAYS_INTERVALS , base.freq_matrix_pkl_path, dump=True)
+        else:
+            print "start load pickle file %s" % (base.freq_matrix_pkl_path)
+
+            with open(base.freq_matrix_pkl_path, "rb") as pickle_file:
+                frequency_matrix_dict = pickle.load(pickle_file)
+                max_frequency_dict = pickle.load(pickle_file)
+                left_datetimes_arr = pickle.load(pickle_file)
+    return frequency_matrix_dict, max_frequency_dict, left_datetimes_arr
+
+def generate_freq_data_pipline():
+    frequency_matrix_dict, max_frequency_dict, left_datetimes_arr = obtain_frequency_matrix()
+    for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
+        day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
+        left_datetimes = left_datetimes_arr[didx]
+
+        print 'start generate freq data of %s' % day_interval_str
+        t0 = time.time()
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            print 'start time_segment %d' % time_segment_i
+            tt0 = time.time()
+            freq_matrix = frequency_matrix_dict[day_interval][time_segment_i]
+            output_freq_time_series_data(day_interval_str, time_segment_i, left_datetimes, freq_matrix)
+            tt1 = time.time()
+            print 'finish time_segment %d in %.2f seconds' % (time_segment_i, tt1 - tt0)
+        t1 = time.time()
+        print 'finish generate freq data of %s in %.2f seconds' % (day_interval_str, t1 - t0)
 if __name__ == "__main__":
     pass

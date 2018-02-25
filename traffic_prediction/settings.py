@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os, datetime
-from base import origin_dir, read_origin_data_into_geo_point_list
 from os.path import normpath,join
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -104,8 +103,6 @@ USE_L10N = True
 
 USE_TZ = False
 
-
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
@@ -115,20 +112,16 @@ STATICFILES_DIRS = (
     normpath(join(BASE_DIR, 'static')),
 )
 
-accident_fp = os.path.join(origin_dir, "accident_loc.tsv")
-violation_fp = os.path.join(origin_dir, "violation_loc.tsv")
-MAX_LINES = 200000
 MINUTES_INTERVAL = datetime.timedelta(minutes=30)
-TIME_PERIODS = {u'3天': 3, u'7天': 7, u'30天': 30}
-DAYS_INTERVALS = [datetime.timedelta(days=val) for val in TIME_PERIODS.values()]
-POINT_TYPE = "accident"
+TIME_PERIODS = {'1_days': 1, '3_days': 3, '7_days': 7, '30_days': 30}
+DAYS_INTERVALS, DAYS_INTERVALS_LABEL = [], []
+for k, v in TIME_PERIODS.items():
+    DAYS_INTERVALS.append(datetime.timedelta(days=v))
+    DAYS_INTERVALS_LABEL.append(k)
+
 #START_TIME = datetime.datetime.strptime("2016-05-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 #END_TIME = datetime.datetime.strptime("2016-06-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 
 START_TIME = datetime.datetime.strptime("2016-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
-END_TIME = datetime.datetime.strptime("2016-04-01 00:00:00", "%Y-%m-%d %H:%M:%S")
+END_TIME = datetime.datetime.strptime("2017-03-01 00:00:00", "%Y-%m-%d %H:%M:%S")
 JSON_DIR = os.path.join(BASE_DIR, "static", "json")
-
-TIME_SEGMENTS = {u'凌晨 0:00-7:00': 0, u'早高峰 7:00-9:00': 1, u'早工作 9:00-12:00': 2, u'中午 12:00-14:00': 3, u'下午 14:00-20:00': 4, u'晚间 20:00-24:00': 5}
-accident_geo_points_list, accident_time_segment_list  = read_origin_data_into_geo_point_list(accident_fp, max_lines=MAX_LINES)
-violation_geo_points_list, violation_time_segment_list  = read_origin_data_into_geo_point_list(violation_fp, max_lines=MAX_LINES)

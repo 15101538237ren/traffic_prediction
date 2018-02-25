@@ -2,16 +2,39 @@
 import os, datetime, math, simplejson, decimal, bisect,time, random
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+POINT_TYPE = "accident"
 data_dir = os.path.join(BASE_DIR, "data")
 origin_dir = os.path.join(data_dir, "origin")
+
+accident_fp = os.path.join(origin_dir, "accident_loc.tsv")
+violation_fp = os.path.join(origin_dir, "violation_loc.tsv")
+FILE_FP = accident_fp if POINT_TYPE == "accident" else violation_fp
+
+MAX_LINES = 907000
 
 SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
+IS_TIME_SEGMENT = True
+
+TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
+TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24
+
 DAWN = 0; MORNING_RUSH = 1; MORNING_WORKING = 2; NOON = 3; AFTERNOON = 4; NIGHT = 5
 
-segment_list=["DAWN", "MORNING_RUSH", "MORNING_WORKING", "MOON", "AFTERNOON", "NIGHT"]
+TIME_SEGMENT_HOURS = {DAWN: 7., MORNING_RUSH: 2., MORNING_WORKING: 3., NOON: 2., AFTERNOON:6. , NIGHT: 4.} if IS_TIME_SEGMENT else {i: 1. for i in range(TIME_SEGMENT_LENGTH)}
+
+TIME_SEGMENTS_LABELS = {u'凌晨 0:00-7:00': 0, u'早高峰 7:00-9:00': 1, u'早工作 9:00-12:00': 2,
+                        u'中午 12:00-14:00': 3, u'下午 14:00-20:00': 4, u'晚间 20:00-24:00': 5} if IS_TIME_SEGMENT \
+                        else {unicode(str(item)): item for item in range(TIME_SEGMENT_LENGTH)}
+
+freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+
+if not os.path.exists(freqency_data_dir):
+    os.makedirs(freqency_data_dir)
+
+freq_matrix_pkl_path = os.path.join(freqency_data_dir, "region_point_freq_matrix.pkl")
 
 MIN_LAT = 39.764427; MAX_LAT = 40.033227
 MIN_LNG = 116.214834; MAX_LNG = 116.562834
@@ -26,10 +49,42 @@ LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
 GRID_LNG_LAT_COORDS = [[LNG_COORDINATES[i_LNG], LNG_COORDINATES[i_LNG + 1], LAT_COORDINATES[j_LAT], LAT_COORDINATES[j_LAT + 1]]  for i_LNG in range(N_LNG) for j_LAT in range(N_LAT)]
 
+def time_segment_judge(hour, is_time_segment = True):
+    if is_time_segment:
+        if hour >= 0 and hour < 7:
+            time_segment = DAWN
+
+        elif hour >= 7 and hour < 9:
+            time_segment = MORNING_RUSH
+
+        elif hour >= 9 and hour < 12:
+            time_segment = MORNING_WORKING
+
+        elif hour >= 12 and hour < 14:
+            time_segment = NOON
+
+        elif hour >= 14 and hour < 20:
+            time_segment = AFTERNOON
+        else:
+            time_segment = NIGHT
+        return time_segment
+    else:
+        return hour
+
+def get_timedelta_of_timesegment(time_segment_i):
+    if IS_TIME_SEGMENT:
+        time_segment_delta_hours = [0, 7, 9, 12, 14, 20]
+        return datetime.timedelta(hours= time_segment_delta_hours[time_segment_i])
+    else:
+        return datetime.timedelta(hours= time_segment_i)
+
 # 输入数据路径, 读取max_lines行, 返回所有点的列表，以及对应时间段的点列表
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n", max_lines = -1):
+    print 'start reading %s' % input_file_path
+
+    t0 = time.time()
     geo_points_list = []
-    time_segment_list = [[] for i in range(6)]#6个元素, 每个是个列表, 对应为该时间段的所有点
+    time_segment_list = [[] for i in range(TIME_SEGMENT_LENGTH)]#TIME_SEGMENT_LENGTH个元素, 每个是个列表, 对应为该时间段的所有点
 
     line_counter = 0
     with open(input_file_path, "r") as input_file:
@@ -47,41 +102,13 @@ def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\
             geo_point = [time_of_point, longtitude, latitude]
             geo_points_list.append(geo_point)
 
-            vio_hour = time_of_point.hour
-
-            if vio_hour >= 0 and vio_hour < 7:
-                time_segment = DAWN
-
-            elif vio_hour >= 7 and vio_hour < 9:
-                time_segment = MORNING_RUSH
-
-            elif vio_hour >= 9 and vio_hour < 12:
-                time_segment = MORNING_WORKING
-
-            elif vio_hour >= 12 and vio_hour < 14:
-                time_segment = NOON
-
-            elif vio_hour >= 14 and vio_hour < 20:
-                time_segment = AFTERNOON
-
-            else:
-                time_segment = NIGHT
+            hour = time_of_point.hour
+            time_segment = time_segment_judge(hour, IS_TIME_SEGMENT)
             time_segment_list[time_segment].append(geo_point) ##将点添加到相应的segment list中
-
             line = input_file.readline()
+    t1 = time.time()
+    print 'finish reading %s in %.2f seconds' % (input_file_path, t1 - t0)
     return geo_points_list, time_segment_list
-
-# 输入时间地理点列表, 输出在(dt_start, dt_end)的时间范围内的点的索引(left_index, right_index)
-def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
-    time_stamps = [time.mktime(item[0].timetuple()) for item in geo_points_List]
-
-    dt_start_time_stamp = time.mktime(dt_start.timetuple())
-    dt_end_time_stamp = time.mktime(dt_end.timetuple())
-
-    left_index = bisect.bisect(time_stamps, dt_start_time_stamp)
-    right_index = bisect.bisect(time_stamps, dt_end_time_stamp) - 1
-
-    return [left_index, right_index]
 
 #给定起始、结束日期时间
 def generate_timelist(start_datetime, end_datetime, time_delta):
@@ -98,53 +125,14 @@ def generate_timelist(start_datetime, end_datetime, time_delta):
         left_dt = right_dt
     return left_datetimes, right_datetimes
 
+# 输入时间地理点列表, 输出在(dt_start, dt_end)的时间范围内的点的索引(left_index, right_index)
+def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
+    time_stamps = [time.mktime(item[0].timetuple()) for item in geo_points_List]
 
+    dt_start_time_stamp = time.mktime(dt_start.timetuple())
+    dt_end_time_stamp = time.mktime(dt_end.timetuple())
 
-error_mapping = {
-    "LOGIN_NEEDED": (1, "login needed"),
-    "PERMISSION_DENIED": (2, "permission denied"),
-    "DATABASE_ERROR": (3, "operate database error"),
-    "ONLY_FOR_AJAX": (4, "the url is only for ajax request")
-}
-class ApiError(Exception):
-    def __init__(self, key, **kwargs):
-        Exception.__init__(self)
-        self.key = key if key in error_mapping else "UNKNOWN"
-        self.kwargs = kwargs
+    left_index = bisect.bisect(time_stamps, dt_start_time_stamp)
+    right_index = bisect.bisect(time_stamps, dt_end_time_stamp) - 1
 
-def ajax_required(func):
-    def __decorator(request, *args, **kwargs):
-        if request.is_ajax:
-            return func(request, *args, **kwargs)
-        else:
-            raise ApiError("ONLY_FOR_AJAX")
-    return __decorator
-
-def safe_new_datetime(d):
-    kw = [d.year, d.month, d.day]
-    if isinstance(d, datetime.datetime):
-        kw.extend([d.hour, d.minute, d.second, d.microsecond, d.tzinfo])
-    return datetime.datetime(*kw)
-
-def safe_new_date(d):
-    return datetime.date(d.year, d.month, d.day)
-
-class DatetimeJSONEncoder(simplejson.JSONEncoder):
-    """可以序列化时间的JSON"""
-
-    DATE_FORMAT = "%Y-%m-%d"
-    TIME_FORMAT = "%H:%M:%S"
-
-    def default(self, o):
-        if isinstance(o, datetime.datetime):
-            d = safe_new_datetime(o)
-            return d.strftime("%s %s" % (self.DATE_FORMAT, self.TIME_FORMAT))
-        elif isinstance(o, datetime.date):
-            d = safe_new_date(o)
-            return d.strftime(self.DATE_FORMAT)
-        elif isinstance(o, datetime.time):
-            return o.strftime(self.TIME_FORMAT)
-        elif isinstance(o, decimal.Decimal):
-            return str(o)
-        else:
-            return super(DatetimeJSONEncoder, self).default(o)
+    return [left_index, right_index]
