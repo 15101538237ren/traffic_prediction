@@ -149,6 +149,9 @@ def output_freq_time_series_data(day_intervals_str, time_segment_i, left_datetim
     for rid in range(base.N_LNG * base.N_LAT):
         out_file_fp = os.path.join(out_dir_fp, str(rid) + '.tsv')
         with open(out_file_fp, "w") as out_file:
+            header = 'datetime\tavg_count\n'
+            out_file.write(header)
+
             for lidx, ldt in enumerate(left_datetimes):
                 ldt_str = (ldt + base.get_timedelta_of_timesegment(time_segment_i)).strftime(base.SECOND_FORMAT)
                 freq_str = str(round(freq_matrix[lidx][rid],4))
@@ -235,4 +238,4 @@ def generate_freq_data_pipline():
         t1 = time.time()
         print 'finish generate freq data of %s in %.2f seconds' % (day_interval_str, t1 - t0)
 if __name__ == "__main__":
-    pass
+    generate_freq_data_pipline()
