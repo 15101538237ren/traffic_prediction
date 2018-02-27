@@ -145,17 +145,23 @@ def output_freq_time_series_data(day_intervals_str, time_segment_i, left_datetim
     out_dir_fp = os.path.join(base.freqency_data_dir, day_intervals_str, 'seg_' + str(time_segment_i))
     if not os.path.exists(out_dir_fp):
         os.makedirs(out_dir_fp)
+    full_seq_fp = os.path.join(out_dir_fp, 'full_sequences.tsv')
 
-    for rid in range(base.N_LNG * base.N_LAT):
-        out_file_fp = os.path.join(out_dir_fp, str(rid) + '.tsv')
-        with open(out_file_fp, "w") as out_file:
-            header = 'datetime\tavg_count\n'
-            out_file.write(header)
+    header = 'datetime\tavg_count\n'
+    with open(full_seq_fp, "w") as full_seq_out:
+        full_seq_out.write(header)
 
-            for lidx, ldt in enumerate(left_datetimes):
-                ldt_str = (ldt + base.get_timedelta_of_timesegment(time_segment_i)).strftime(base.SECOND_FORMAT)
-                freq_str = str(round(freq_matrix[lidx][rid],4))
-                out_file.write(ldt_str + '\t' + freq_str + '\n')
+        for rid in range(base.N_LNG * base.N_LAT):
+            out_file_fp = os.path.join(out_dir_fp, str(rid) + '.tsv')
+            with open(out_file_fp, "w") as out_file:
+                out_file.write(header)
+
+                for lidx, ldt in enumerate(left_datetimes):
+                    ldt_str = (ldt + base.get_timedelta_of_timesegment(time_segment_i)).strftime(base.SECOND_FORMAT)
+                    freq_str = str(round(freq_matrix[lidx][rid],4))
+                    ltw = ldt_str + '\t' + freq_str + '\n'
+                    out_file.write(ltw)
+                    full_seq_out.write(ltw)
     print 'write freq of %s %s sucessful' % (day_intervals_str, str(time_segment_i))
 
 def obtain_origin_data():

@@ -26,17 +26,12 @@ def draw_trend(timeSeries, size):
     plt.title('Rolling Mean')
     plt.show()
 
-def draw_ts(timeSeries):
+def draw_time_series(timeSeries):
     f = plt.figure(facecolor='white')
     timeSeries.plot(color='blue')
     plt.show()
 
-'''
-　　Unit Root Test
-   The null hypothesis of the Augmented Dickey-Fuller is that there is a unit
-   root, with the alternative that there is no unit root. That is to say the
-   bigger the p-value the more reason we assert that there is a unit root
-'''
+# 均方根检验平稳性, p-value越小, 越平稳
 def unit_root_test(ts):
     dftest = adfuller(ts)
     # 对上述函数求得的值进行语义描述
@@ -54,12 +49,14 @@ def draw_acf_pacf(ts, lags=31):
     plot_pacf(ts, lags=lags, ax=ax2)
     plt.show()
 
+# 判断是否是高斯白噪声, 看最后一列前十二行的检验概率，小于给定的水平，比如0.05、0.10则不是白噪声序列。
 def ljung_box_test(ts):
     r, q, p = acf(ts, qstat=True)
     data = np.c_[range(1, 41), r[1:], q, p]
     table = pd.DataFrame(data, columns=['lag', "AC", "Q", "Prob(>Q)"])
     print(table.set_index('lag'))
 
+# 残差检验与画图
 def residual_test(residual,lags =31):
     # plot acf and pacf
     fig = plt.figure(facecolor='white')
@@ -79,8 +76,23 @@ def residual_test(residual,lags =31):
 
     ljung_box_test(residual)
 
+# 用ARMA模型预测时间序列, p, q 为模型参数
+def time_seq_prediction_by_arma(ts, time_str, p=1 , q=1):
+    # draw_time_series(ts)
+    # draw_acf_pacf(ts)
+    # unit_root_test(ts)
+    arma_moddel = ARMA(ts, (p, q)).fit()
+    # print(arma_moddel.aic, arma_moddel.bic, arma_moddel.hqic)
+    # residual_test(arma_moddel.resid)
+    predict_sunspots = arma_moddel.predict('2017-01-01' + time_str, '2017-02-27' + time_str)  #
+    print(predict_sunspots)
+    fig, ax = plt.subplots(facecolor='white')
+    ax = ts.ix['2016-01-01'+ time_str:].plot(ax=ax)
+    predict_sunspots.plot(ax=ax)
+    plt.show()
+
 if __name__ == "__main__":
-    day_interval = '3_days'
+    day_interval = '1_days'
     time_segment_i = 2
     region_id = 326
     input_dir_fp = os.path.join(base.freqency_data_dir, day_interval, 'seg_' + str(time_segment_i))
@@ -89,16 +101,5 @@ if __name__ == "__main__":
     df = pd.read_csv(time_series_fp, sep='\t', lineterminator='\n', header= 0, index_col='datetime', encoding='utf-8')
     df.index = pd.to_datetime(df.index)
     ts = df['avg_count']  # 生成pd.Series对象
-    draw_ts(ts)
-    draw_acf_pacf(ts)
-    unit_root_test(ts)
-    p = q = 1
-    arma_moddel = ARMA(ts, (p, q)).fit()
-    # print(arma_moddel.aic, arma_moddel.bic, arma_moddel.hqic)
-    # residual_test(arma_moddel.resid)
-    predict_sunspots = arma_moddel.predict('2016-09-03 09:00:00', '2017-02-27 09:00:00', dynamic=True)
-    print(predict_sunspots)
-    fig, ax = plt.subplots(facecolor='white')
-    ax = ts.ix['2016-01-01 09:00:00':].plot(ax=ax)
-    predict_sunspots.plot(ax=ax)
-    plt.show()
+    time_str = ' 09:00:00'
+    time_seq_prediction_by_arma(ts, time_str, p=3, q=3)
