@@ -79,7 +79,7 @@ def residual_test(residual,lags =31):
 # 用ARMA模型预测时间序列, p, q 为模型参数
 def time_seq_prediction_by_arma(ts, time_str, p=1 , q=1):
     # draw_time_series(ts)
-    # draw_acf_pacf(ts)
+    draw_acf_pacf(ts)
     # unit_root_test(ts)
     arma_moddel = ARMA(ts, (p, q)).fit()
     # print(arma_moddel.aic, arma_moddel.bic, arma_moddel.hqic)
@@ -92,7 +92,7 @@ def time_seq_prediction_by_arma(ts, time_str, p=1 , q=1):
     plt.show()
 
 if __name__ == "__main__":
-    day_interval = '1_days'
+    day_interval = '3_days'
     time_segment_i = 2
     region_id = 326
     input_dir_fp = os.path.join(base.freqency_data_dir, day_interval, 'seg_' + str(time_segment_i))
@@ -102,4 +102,4 @@ if __name__ == "__main__":
     df.index = pd.to_datetime(df.index)
     ts = df['avg_count']  # 生成pd.Series对象
     time_str = ' 09:00:00'
-    time_seq_prediction_by_arma(ts, time_str, p=3, q=3)
+    time_seq_prediction_by_arma(ts, time_str, p=3, q=1)

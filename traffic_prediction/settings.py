@@ -12,8 +12,9 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 """
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-import os, datetime
+import os
 from os.path import normpath,join
+from datetime import datetime, timedelta
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -112,16 +113,18 @@ STATICFILES_DIRS = (
     normpath(join(BASE_DIR, 'static')),
 )
 
-MINUTES_INTERVAL = datetime.timedelta(minutes=30)
-TIME_PERIODS = {'1_days': 1, '3_days': 3, '7_days': 7, '30_days': 30}
+MINUTES_INTERVAL = timedelta(minutes=30)
+TIME_PERIODS = {'3_days': 3}#{'1_days': 1, '3_days': 3, '7_days': 7, '30_days': 30}
 DAYS_INTERVALS, DAYS_INTERVALS_LABEL = [], []
 for k, v in TIME_PERIODS.items():
-    DAYS_INTERVALS.append(datetime.timedelta(days=v))
+    DAYS_INTERVALS.append(timedelta(days=v))
     DAYS_INTERVALS_LABEL.append(k)
-
+SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
 #START_TIME = datetime.datetime.strptime("2016-05-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 #END_TIME = datetime.datetime.strptime("2016-06-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 
-START_TIME = datetime.datetime.strptime("2016-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
-END_TIME = datetime.datetime.strptime("2017-03-01 00:00:00", "%Y-%m-%d %H:%M:%S")
+START_TIME = datetime.strptime("2016-01-01 00:00:00", SECOND_FORMAT)
+END_TIME = datetime.strptime("2017-12-20 00:00:00", SECOND_FORMAT)
+TRAINING_DATETIME_SLOT = [START_TIME, datetime.strptime("2017-08-20 21:30:00", SECOND_FORMAT)]
+TESTING_DATETIME_SLOT = [datetime.strptime("2017-10-12 00:05:30", SECOND_FORMAT),END_TIME]
 JSON_DIR = os.path.join(BASE_DIR, "static", "json")

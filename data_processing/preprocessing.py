@@ -142,26 +142,21 @@ def generate_region_point_frequency(time_segment_list_tmp,left_datetimes, right_
     return region_point_frequency_matrix_in_time_segment, max_frequency
 
 def output_freq_time_series_data(day_intervals_str, time_segment_i, left_datetimes, freq_matrix):
-    out_dir_fp = os.path.join(base.freqency_data_dir, day_intervals_str, 'seg_' + str(time_segment_i))
+    out_dir_fp = os.path.join(base.freqency_data_dir, day_intervals_str, base.SEGMENT_FILE_PRE + str(time_segment_i))
     if not os.path.exists(out_dir_fp):
         os.makedirs(out_dir_fp)
-    full_seq_fp = os.path.join(out_dir_fp, 'full_sequences.tsv')
 
     header = 'datetime\tavg_count\n'
-    with open(full_seq_fp, "w") as full_seq_out:
-        full_seq_out.write(header)
+    for rid in range(base.N_LNG * base.N_LAT):
+        out_file_fp = os.path.join(out_dir_fp, str(rid) + '.tsv')
+        with open(out_file_fp, "w") as out_file:
+            out_file.write(header)
 
-        for rid in range(base.N_LNG * base.N_LAT):
-            out_file_fp = os.path.join(out_dir_fp, str(rid) + '.tsv')
-            with open(out_file_fp, "w") as out_file:
-                out_file.write(header)
-
-                for lidx, ldt in enumerate(left_datetimes):
-                    ldt_str = (ldt + base.get_timedelta_of_timesegment(time_segment_i)).strftime(base.SECOND_FORMAT)
-                    freq_str = str(round(freq_matrix[lidx][rid],4))
-                    ltw = ldt_str + '\t' + freq_str + '\n'
-                    out_file.write(ltw)
-                    full_seq_out.write(ltw)
+            for lidx, ldt in enumerate(left_datetimes):
+                ldt_str = (ldt + base.get_timedelta_of_timesegment(time_segment_i)).strftime(base.SECOND_FORMAT)
+                freq_str = str(round(freq_matrix[lidx][rid],4))
+                ltw = ldt_str + '\t' + freq_str + '\n'
+                out_file.write(ltw)
     print 'write freq of %s %s sucessful' % (day_intervals_str, str(time_segment_i))
 
 def obtain_origin_data():
@@ -243,5 +238,54 @@ def generate_freq_data_pipline():
             print 'finish time_segment %d in %.2f seconds' % (time_segment_i, tt1 - tt0)
         t1 = time.time()
         print 'finish generate freq data of %s in %.2f seconds' % (day_interval_str, t1 - t0)
+
+def generate_train_and_test_data(freq_data_dir, training_out_fp, testing_out_fp, sequence_length, training_datetime_slot, testing_datetime_slot):
+    training_data_seq, testing_data_seq = [], []
+
+    seq_len = sequence_length + 1
+    for rid in range(base.N_LNG * base.N_LAT):
+        region_train_data_origin, region_testing_data_origin = [], []
+        
+        freq_data_fp = os.path.join(freq_data_dir, str(rid) + '.tsv')
+        freq_data = open(freq_data_fp, 'rb').read()
+        
+        for idx, line_item in enumerate(freq_data.split('\n')):
+            if idx and line_item != "":
+                line_item_arr = line_item.split("\t")
+                dti = datetime.datetime.strptime(line_item_arr[0], base.SECOND_FORMAT)
+                freq = float(line_item_arr[1])
+                
+                if training_datetime_slot[0] <= dti <= training_datetime_slot[1]:
+                    region_train_data_origin.append(freq)
+                elif testing_datetime_slot[0] <= dti <= testing_datetime_slot[1]:
+                    region_testing_data_origin.append(freq)
+    
+        for index in range(len(region_train_data_origin) - seq_len):
+            training_data_seq.append(region_train_data_origin[index: index + seq_len])  #得到长度为seq_len+1的向量，最后一个作为label
+        
+        for index in range(len(region_testing_data_origin) - seq_len):
+            testing_data_seq.append(region_testing_data_origin[index: index + seq_len])
+    
+    base.write_sequence_array_into_file(training_out_fp, training_data_seq)
+    base.write_sequence_array_into_file(testing_out_fp, testing_data_seq)
+
+def generate_train_and_test_data_pipline():
+    for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
+        day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            freqency_data_dir = os.path.join(base.freqency_data_dir, day_interval_str, base.SEGMENT_FILE_PRE + str(time_segment_i))
+            training_dir_fp = os.path.join(base.training_data_dir, day_interval_str)
+            testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str)
+
+            dirs_to_create = [training_dir_fp, testing_dir_fp]
+            for dtc in dirs_to_create:
+                if not os.path.exists(dtc):
+                    os.makedirs(dtc)
+
+            training_data_fp = os.path.join(training_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
+            testing_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
+            generate_train_and_test_data(freqency_data_dir, training_data_fp, testing_data_fp, base.SEQUENCE_LENGTH,
+                                         settings.TRAINING_DATETIME_SLOT, settings.TESTING_DATETIME_SLOT)
 if __name__ == "__main__":
-    generate_freq_data_pipline()
+    # generate_freq_data_pipline()
+    generate_train_and_test_data_pipline()

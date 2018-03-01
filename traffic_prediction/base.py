@@ -10,7 +10,7 @@ accident_fp = os.path.join(origin_dir, "accident_loc.tsv")
 violation_fp = os.path.join(origin_dir, "violation_loc.tsv")
 FILE_FP = accident_fp if POINT_TYPE == "accident" else violation_fp
 
-MAX_LINES = 907000
+MAX_LINES = -1
 
 SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -18,6 +18,8 @@ SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
 IS_TIME_SEGMENT = True
 
+SEGMENT_FILE_PRE = 'seg_'
+SEQUENCE_LENGTH = 20
 TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
 TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24
 
@@ -30,9 +32,14 @@ TIME_SEGMENTS_LABELS = {u'凌晨 0:00-7:00': 0, u'早高峰 7:00-9:00': 1, u'早
                         else {unicode(str(item)): item for item in range(TIME_SEGMENT_LENGTH)}
 
 freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+training_data_dir = os.path.join(data_dir, "intermediate", "training_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+testing_data_dir = os.path.join(data_dir, "intermediate", "testing_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 
-if not os.path.exists(freqency_data_dir):
-    os.makedirs(freqency_data_dir)
+dirs_to_create = [freqency_data_dir, training_data_dir, training_data_dir]
+
+for dtc in dirs_to_create:
+    if not os.path.exists(dtc):
+        os.makedirs(dtc)
 
 freq_matrix_pkl_path = os.path.join(freqency_data_dir, "region_point_freq_matrix.pkl")
 
@@ -136,3 +143,12 @@ def get_geo_time_idxs(geo_points_List, dt_start, dt_end):
     right_index = bisect.bisect(time_stamps, dt_end_time_stamp) - 1
 
     return [left_index, right_index]
+
+def write_sequence_array_into_file(out_fp, seq_arr, sep="\t", line_end = "\n"):
+    with open(out_fp, "w") as out_f:
+        ltws = []
+        for titem in seq_arr:
+            ltw = sep.join([str(item) for item in titem])
+            ltws.append(ltw)
+        out_f.write(line_end.join(ltws))
+    print "writing %s sucessful" % out_fp
