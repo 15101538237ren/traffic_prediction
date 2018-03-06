@@ -3,7 +3,7 @@
 from traffic_prediction import base
 from traffic_prediction import settings
 import os, json, urllib2, math, simplejson, datetime, time, pickle
-
+import numpy as np
 frequency_matrix_dict, max_frequency_dict, left_datetimes_arr, geo_points_list, time_segment_list = None, None, None, None, None
 #标记是否是节假日
 def label_holiday(geo_points_list):
@@ -258,13 +258,17 @@ def generate_train_and_test_data(freq_data_dir, training_out_fp, testing_out_fp,
                 if training_datetime_slot[0] <= dti <= training_datetime_slot[1]:
                     region_train_data_origin.append(freq)
                 elif testing_datetime_slot[0] <= dti <= testing_datetime_slot[1]:
-                    region_testing_data_origin.append(freq)
+                    region_testing_data_origin.append([rid, dti, freq])
     
-        for index in range(len(region_train_data_origin) - seq_len):
+        for index in range(len(region_train_data_origin) - seq_len + 1):
             training_data_seq.append(region_train_data_origin[index: index + seq_len])  #得到长度为seq_len+1的向量，最后一个作为label
         
-        for index in range(len(region_testing_data_origin) - seq_len):
-            testing_data_seq.append(region_testing_data_origin[index: index + seq_len])
+        for index in range(len(region_testing_data_origin) - seq_len + 1):
+            arr_to_append = [region_testing_data_origin[index + seq_len - 1][0],
+                             region_testing_data_origin[index + seq_len - 1][1].strftime(base.SECOND_FORMAT)]
+            for idx in range(index, index + seq_len):
+                arr_to_append.append(region_testing_data_origin[idx][2])
+            testing_data_seq.append(arr_to_append)
     
     base.write_sequence_array_into_file(training_out_fp, training_data_seq)
     base.write_sequence_array_into_file(testing_out_fp, testing_data_seq)
@@ -284,8 +288,39 @@ def generate_train_and_test_data_pipline():
 
             training_data_fp = os.path.join(training_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
             testing_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
-            generate_train_and_test_data(freqency_data_dir, training_data_fp, testing_data_fp, base.SEQUENCE_LENGTH,
+            generate_train_and_test_data(freqency_data_dir, training_data_fp, testing_data_fp, base.SEQUENCE_LENGTH_DICT[settings.TIME_PERIODS[day_interval_str]],
                                          settings.TRAINING_DATETIME_SLOT, settings.TESTING_DATETIME_SLOT)
+
+def load_prediction_result(int_time_period, time_segment_i):
+    datetime_dict = {}
+    datetime_list = []
+    frequency_matrix_dict_real, frequency_matrix_dict_predicted = {}, {}
+    frequency_matrix_real, frequency_matrix_predicted = [], []
+    max_frequency = -999999
+    day_interval_str = settings.TIME_PERIODS_INT_TO_STR[int_time_period]
+    predict_result_fp = os.path.join(base.predict_result_dir, day_interval_str, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+    with open(predict_result_fp, "r") as predict_result_f:
+        lines = predict_result_f.read().split("\n")
+        for line in lines:
+            line_arr = line.split("\t")
+            datetime_str = line_arr[1]
+            if datetime_str not in datetime_dict.keys():
+                datetime_dict[datetime_str] = 1
+                frequency_matrix_dict_real[datetime_str] = [0. for rid in range(base.N_LNG * base.N_LAT)]
+                frequency_matrix_dict_predicted[datetime_str] = [0. for rid in range(base.N_LNG * base.N_LAT)]
+            region_id = int(line_arr[0])
+            frequency_matrix_dict_real[datetime_str][region_id] = float(line_arr[2])
+            frequency_matrix_dict_predicted[datetime_str][region_id] = float(line_arr[3])
+    for datetime_key in sorted(datetime_dict.keys()):
+        datetime_list.append(datetime.datetime.strptime(datetime_key, base.SECOND_FORMAT))
+
+        frequency_matrix_real.append(frequency_matrix_dict_real[datetime_key])
+        frequency_matrix_predicted.append(frequency_matrix_dict_predicted[datetime_key])
+        relative_max = max(np.array(frequency_matrix_dict_real[datetime_key]).max(), np.array(frequency_matrix_dict_predicted[datetime_key]).max())
+        max_frequency = max_frequency if relative_max < max_frequency else relative_max
+
+    del datetime_dict, frequency_matrix_dict_real, frequency_matrix_dict_predicted
+    return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency
 if __name__ == "__main__":
     # generate_freq_data_pipline()
     generate_train_and_test_data_pipline()

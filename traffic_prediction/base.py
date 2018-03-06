@@ -18,10 +18,11 @@ SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
 IS_TIME_SEGMENT = True
 
-SEGMENT_FILE_PRE = 'seg_'
-SEQUENCE_LENGTH = 20
 TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
 TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24
+
+SEGMENT_FILE_PRE = 'seg_'
+SEQUENCE_LENGTH_DICT = {1: 29, 3: 19, 7: 4, 30: 1}
 
 DAWN = 0; MORNING_RUSH = 1; MORNING_WORKING = 2; NOON = 3; AFTERNOON = 4; NIGHT = 5
 
@@ -34,8 +35,10 @@ TIME_SEGMENTS_LABELS = {u'凌晨 0:00-7:00': 0, u'早高峰 7:00-9:00': 1, u'早
 freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 training_data_dir = os.path.join(data_dir, "intermediate", "training_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 testing_data_dir = os.path.join(data_dir, "intermediate", "testing_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+model_dir = os.path.join(data_dir, "intermediate", "model", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+predict_result_dir = os.path.join(data_dir, "intermediate", "predict_result", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 
-dirs_to_create = [freqency_data_dir, training_data_dir, training_data_dir]
+dirs_to_create = [freqency_data_dir, training_data_dir, training_data_dir, model_dir, predict_result_dir]
 
 for dtc in dirs_to_create:
     if not os.path.exists(dtc):

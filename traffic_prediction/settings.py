@@ -114,7 +114,8 @@ STATICFILES_DIRS = (
 )
 
 MINUTES_INTERVAL = timedelta(minutes=30)
-TIME_PERIODS = {'3_days': 3}#{'1_days': 1, '3_days': 3, '7_days': 7, '30_days': 30}
+TIME_PERIODS = {'1_days': 1, '3_days': 3, '7_days': 7, '30_days': 30}
+TIME_PERIODS_INT_TO_STR = {v: k for k, v in TIME_PERIODS.items()}
 DAYS_INTERVALS, DAYS_INTERVALS_LABEL = [], []
 for k, v in TIME_PERIODS.items():
     DAYS_INTERVALS.append(timedelta(days=v))

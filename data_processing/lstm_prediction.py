@@ -102,17 +102,9 @@ if __name__=='__main__':
     print('> Loading data... ')
 
     X_train, y_train, X_test, y_test = load_data(time_series_fp, seq_len, train_sample_ratio)
-
-    print('X_train shape:',X_train.shape)  #(3709L, 50L, 1L)
-    print('y_train shape:',y_train.shape)  #(3709L,)
-    print('X_test shape:',X_test.shape)    #(412L, 50L, 1L)
-    print('y_test shape:',y_test.shape)    #(412L,)
-
-    print('> Data Loaded. Compiling...')
-
     model = build_model([1, 50, 100, 1])
 
-    model.fit(X_train,y_train,batch_size=512,nb_epoch=epochs,validation_split=0.05)
+    model.fit(X_train, y_train, batch_size=512, nb_epoch=epochs,validation_split=0.05)
 
     point_by_point_predictions = predict_point_by_point(model, X_test)
     print('point_by_point_predictions shape:',np.array(point_by_point_predictions).shape)  #(412L)
