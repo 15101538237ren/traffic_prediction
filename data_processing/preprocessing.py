@@ -293,12 +293,15 @@ def generate_train_and_test_data_pipline():
 
 def load_prediction_result(int_time_period, time_segment_i):
     datetime_dict = {}
-    datetime_list = []
+    datetime_list, datetime_str_list = [], []
     frequency_matrix_dict_real, frequency_matrix_dict_predicted = {}, {}
     frequency_matrix_real, frequency_matrix_predicted = [], []
+    real_frequency, predicted_frequency = {rid :[] for rid in range(base.N_LNG * base.N_LAT)}, {rid :[] for rid in range(base.N_LNG * base.N_LAT)}
+
     max_frequency = -999999
     day_interval_str = settings.TIME_PERIODS_INT_TO_STR[int_time_period]
     predict_result_fp = os.path.join(base.predict_result_dir, day_interval_str, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+
     with open(predict_result_fp, "r") as predict_result_f:
         lines = predict_result_f.read().split("\n")
         for line in lines:
@@ -309,18 +312,22 @@ def load_prediction_result(int_time_period, time_segment_i):
                 frequency_matrix_dict_real[datetime_str] = [0. for rid in range(base.N_LNG * base.N_LAT)]
                 frequency_matrix_dict_predicted[datetime_str] = [0. for rid in range(base.N_LNG * base.N_LAT)]
             region_id = int(line_arr[0])
-            frequency_matrix_dict_real[datetime_str][region_id] = float(line_arr[2])
-            frequency_matrix_dict_predicted[datetime_str][region_id] = float(line_arr[3])
+            real_freq = float(line_arr[2])
+            predicted_freq = float(line_arr[3])
+            frequency_matrix_dict_real[datetime_str][region_id] = real_freq
+            frequency_matrix_dict_predicted[datetime_str][region_id] = predicted_freq
+            real_frequency[region_id].append(real_freq)
+            predicted_frequency[region_id].append(predicted_freq)
     for datetime_key in sorted(datetime_dict.keys()):
         datetime_list.append(datetime.datetime.strptime(datetime_key, base.SECOND_FORMAT))
-
+        datetime_str_list.append(datetime_key.split(" ")[0])
         frequency_matrix_real.append(frequency_matrix_dict_real[datetime_key])
         frequency_matrix_predicted.append(frequency_matrix_dict_predicted[datetime_key])
         relative_max = max(np.array(frequency_matrix_dict_real[datetime_key]).max(), np.array(frequency_matrix_dict_predicted[datetime_key]).max())
         max_frequency = max_frequency if relative_max < max_frequency else relative_max
 
     del datetime_dict, frequency_matrix_dict_real, frequency_matrix_dict_predicted
-    return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency
+    return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, datetime_str_list, real_frequency, predicted_frequency
 if __name__ == "__main__":
     # generate_freq_data_pipline()
     generate_train_and_test_data_pipline()

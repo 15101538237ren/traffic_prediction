@@ -82,7 +82,7 @@ def predict_result_comparision(request):
     else:
         time_period_selected = int(request.POST.get("time_period", '7'))
         time_segment_selected = int(request.POST.get("time_segment", '0'))
-        datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency = load_prediction_result(time_period_selected, time_segment_selected)
+        datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, _ , _ = load_prediction_result(time_period_selected, time_segment_selected)
         return_dict = {}
         return_dict['datetime_list'] = datetime_list
         return_dict['slider_cnts'] = len(datetime_list)
@@ -103,14 +103,42 @@ def predict_result_comparision(request):
         response_dict["addr"] = addr
 
         return JsonResponse(response_dict)
+
+def predicted_line_chart(request):
+    if request.method == 'GET':
+        time_period = settings.TIME_PERIODS
+        time_segment = base.TIME_SEGMENTS_LABELS
+        date_start = settings.START_TIME
+        return render_to_response('predicted_line_chart.html', locals(), context_instance=RequestContext(request))
+    else:
+        time_period_selected = int(request.POST.get("time_period", '7'))
+        time_segment_selected = int(request.POST.get("time_segment", '0'))
+        ret_dict = {'grid_boundaries': GRID_LNG_LAT_COORDS}
+        _, _, _, _, ret_dict['datetime_str_list'], ret_dict['real_frequency'], ret_dict['predicted_frequency'] = load_prediction_result(time_period_selected, time_segment_selected)
+
+        name_of_json_file = "predicted_line_chart.json"
+        json_fp = settings.os.path.join(settings.JSON_DIR, name_of_json_file)
+
+        with open(json_fp, "w") as json_file:
+            json_str = simplejson.dumps(ret_dict)
+            json_file.write(json_str)
+            print "dump %s sucessful!" % json_fp
+
+        addr = '/static/json/' + name_of_json_file
+        response_dict = {}
+        response_dict["code"] = 0
+        response_dict["addr"] = addr
+        option_addr = '/static/json/line_chart_option.json'
+        response_dict["option_addr"] = option_addr
+        return JsonResponse(response_dict)
 @ajax_required
 def query_status(request):
     datetime_query = request.POST.get("query_dt", settings.START_TIME.strftime(SECOND_FORMAT))
 
     from_dt = datetime.datetime.strptime(datetime_query, SECOND_FORMAT)
     end_dt = from_dt + settings.MINUTES_INTERVAL
-
-    get_geo_points_from(from_dt, end_dt, -1, type=base.POINT_TYPE)
+    geo_points_list_tmp, _ = obtain_origin_data()
+    get_geo_points_from(geo_points_list_tmp, from_dt, end_dt, write=True)
     addr = '/static/json/geo_points.json'
     response_dict = {}
     response_dict["code"] = 0

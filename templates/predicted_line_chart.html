@@ -2,13 +2,9 @@
 {% load static from staticfiles %}
 {% block title %}事故预测结果对比{% endblock %}
 {% block head %}
+    <script type="text/javascript" src="{% static "js/echarts.js" %}"></script>
     <script type="text/javascript">
-    var datetime_list;
-    var datetime_idx;
-    function get_datetime(idx)
-    {
-        return datetime_list[idx];
-    }
+    var myChart, option, myModal, datetime_list, grid_boundaries, real_frequency, predicted_frequency;
 
     function submit_form()
     {
@@ -18,41 +14,22 @@
                 xhr.setRequestHeader("X-CSRFToken", '{{ csrf_token }}');
             },
         });
+
         var params=$('#form_to_submit').serialize();
+
         $.ajax({
             type: "POST",
-            url: "{% url 'visualize:predict_result_comparision' %}",
+            url: "{% url 'visualize:predicted_line_chart' %}",
             data: params,
             success: function (result) {
                 if (result["code"] == 0) {
+                $.get(result["option_addr"]).done(function (option_obj) {option = option_obj;});
                 $.get(result["addr"]).done(function (json_obj) {
-                    datetime_list = json_obj.datetime_list;
-                    $("#slider3").remove();
-
-                    datetime_idx = 0;
-                    var $slider3=$("<div id='slider3'></div>");
-                    $("#slider_div").append($slider3);
-
-                    if ($slider3.length > 0) {
-                      $slider3.slider({
-                        min: 0,
-                        max: json_obj.slider_cnts,
-                        values: 0,
-                        orientation: "horizontal",
-                        range: "min",
-                        slide: function(event, ui) {
-                          $("#datetimepicker").val(get_datetime(ui.value));
-                          datetime_idx = ui.value;
-                          redraw_freqency_of_real_and_predicted(color_matrix_real, color_matrix_predicted, grid_boundaries, stroke_color, datetime_idx);
-                        }
-                      });
-                    }
-                    $("#slider_div").show();
-                    var grid_boundaries = json_obj.grid_boundaries;
-                    var color_matrix_real = json_obj.color_matrix_real;
-                    var color_matrix_predicted = json_obj.color_matrix_predicted;
-                    var stroke_color = "red";
-                    redraw_freqency_of_real_and_predicted(color_matrix_real, color_matrix_predicted, grid_boundaries, stroke_color, datetime_idx);
+                    datetime_list = json_obj.datetime_str_list;
+                    grid_boundaries = json_obj.grid_boundaries;
+                    real_frequency = json_obj.real_frequency;
+                    predicted_frequency = json_obj.predicted_frequency;
+                    draw_grid_boundaries();
                     });
             }
             else {
@@ -104,46 +81,49 @@
                 {% csrf_token %}
         </div>
         </form>
-        <div class="form-group" id="slider_div" style="display: none">
-            <label for="dt_query" >请滑动下方滑动条, 改变日期:</label>
-            <input type="text" class="form-control form-date input-sm" value="{{ date_start }}" style="width: 180px;"  id="datetimepicker" data-date-format="yyyy-mm-dd hh:ii:ss">
-        </div>
         </div>
     </div>
     <div id="allmap">
-        <div id="left_map">
-
-        </div>
-        <div id="right_map">
-
-        </div>
     </div>
+
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" style="width: 1200px; height: 1000px">
+	    <div class="modal-dialog" id="modal_dialog" style="width: 1200px; height: 1000px">
+            <div class="modal-content" id = "modal_content" style="width: 1200px; height: 1000px">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden='true'>
+                        &times;
+                    </button>
+                </div>
+                <div class="modal-body" id="modal_body" style="width: 1200px; height: 800px">
+                    <div id="echart_body" class="modal_inner_size" style="width: 1200px; height: 800px; display: none">
+
+                    </div>
+                </div>
+            </div>
+			<div class="modal-footer"></div>
+		</div><!-- /.modal-content -->
+	</div><!-- /.modal -->
 {% endblock %}
 {% block endscript %}
 <script type="text/javascript">
-
+    myModal = $("#myModal");
+    myChart = echarts.init(document.getElementById('echart_body'));
 	// 百度地图API功能
-	var lmap = new BMap.Map("left_map");
-	lmap.centerAndZoom(new BMap.Point(116.404, 39.915), 13);     // 初始化地图,设置中心点坐标和地图级别
-
-    var rmap = new BMap.Map("right_map");
-	rmap.centerAndZoom(new BMap.Point(116.404, 39.915), 13);     // 初始化地图,设置中心点坐标和地图级别
+	var map = new BMap.Map("allmap");
+	map.centerAndZoom(new BMap.Point(116.404, 39.915), 13);     // 初始化地图,设置中心点坐标和地图级别
 
     $('#datetimepicker').datetimepicker({
         language:'zh-CN',
         autoclose:1,
         minuteStep:1});
 
-    var gradient = new gradientColor('#FFFFFF','#FF0000',255);
-    function redraw_freqency_of_real_and_predicted(color_matrix_real, color_matrix_predicted, grid_boundaries, stroke_color, datetime_idx) {
-        lmap.clearOverlays();
-        var color_array_real = color_matrix_real[datetime_idx];
+    function draw_grid_boundaries() {
+        map.clearOverlays();
         for (var i = 0; i < grid_boundaries.length; i++  ) {
             var min_lng = grid_boundaries[i][0];
             var max_lng = grid_boundaries[i][1];
             var min_lat = grid_boundaries[i][2];
             var max_lat = grid_boundaries[i][3];
-            var color = color_array_real[i];
 
             var polygon = new BMap.Polygon([
                 new BMap.Point(min_lng, min_lat),
@@ -151,39 +131,22 @@
                 new BMap.Point(max_lng, max_lat),
                 new BMap.Point(min_lng, max_lat)
             ], {
-                strokeColor: stroke_color,
+                strokeColor: "red",
                 strokeWeight: 1,
                 strokeOpacity: 1,
-                fillColor: gradient[color],
+                fillColor: "rgba(255,255,255,0.2)",
                 fillOpacity: 0.5
             });
-
-            lmap.addOverlay(polygon);
-        }
-
-        rmap.clearOverlays();
-        var color_array_predicted = color_matrix_predicted[datetime_idx];
-        for (i = 0; i < grid_boundaries.length; i++  ) {
-            min_lng = grid_boundaries[i][0];
-            max_lng = grid_boundaries[i][1];
-            min_lat = grid_boundaries[i][2];
-            max_lat = grid_boundaries[i][3];
-            color = color_array_predicted[i];
-
-            var polygon = new BMap.Polygon([
-                new BMap.Point(min_lng, min_lat),
-                new BMap.Point(max_lng, min_lat),
-                new BMap.Point(max_lng, max_lat),
-                new BMap.Point(min_lng, max_lat)
-            ], {
-                strokeColor: stroke_color,
-                strokeWeight: 1,
-                strokeOpacity: 1,
-                fillColor: gradient[color],
-                fillOpacity: 0.5
+            polygon.idx = i;
+            polygon.addEventListener("click", function () {
+                option.xAxis[0].data = datetime_list;
+                option.series[0].data = real_frequency[this.idx];
+                option.series[1].data = predicted_frequency[this.idx];
+                myChart.setOption(option);
+                $("#echart_body").css('display','block');
+                myModal.modal('show');
             });
-
-            rmap.addOverlay(polygon);
+           map.addOverlay(polygon);
         }
     }
 </script>
