@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% load static from staticfiles %}
+{% block title %}事故预测结果对比{% endblock %}
+{% block head %}
+    <script type="text/javascript">
+    var datetime_list;
+    var datetime_idx;
+    function get_datetime(idx)
+    {
+        return datetime_list[idx];
+    }
+
+    function submit_form()
+    {
+        $.ajaxSetup({
+            dataType: "json",
+            beforeSend: function (xhr, settings) {
+                xhr.setRequestHeader("X-CSRFToken", '{{ csrf_token }}');
+            },
+        });
+        var params=$('#form_to_submit').serialize();
+        $.ajax({
+            type: "POST",
+            url: "{% url 'visualize:predict_result_comparision' %}",
+            data: params,
+            success: function (result) {
+                if (result["code"] == 0) {
+                $.get(result["addr"]).done(function (json_obj) {
+                    datetime_list = json_obj.datetime_list;
+                    $("#slider3").remove();
+
+                    datetime_idx = 0;
+                    var $slider3=$("<div id='slider3'></div>");
+                    $("#slider_div").append($slider3);
+
+                    if ($slider3.length > 0) {
+                      $slider3.slider({
+                        min: 0,
+                        max: json_obj.slider_cnts,
+                        values: 0,
+                        orientation: "horizontal",
+                        range: "min",
+                        slide: function(event, ui) {
+                          $("#datetimepicker").val(get_datetime(ui.value));
+                          datetime_idx = ui.value;
+                          redraw_freqency_of_real_and_predicted(color_matrix_real, color_matrix_predicted, grid_boundaries, stroke_color, datetime_idx);
+                        }
+                      });
+                    }
+                    $("#slider_div").show();
+                    var grid_boundaries = json_obj.grid_boundaries;
+                    var color_matrix_real = json_obj.color_matrix_real;
+                    var color_matrix_predicted = json_obj.color_matrix_predicted;
+                    var stroke_color = "red";
+                    redraw_freqency_of_real_and_predicted(color_matrix_real, color_matrix_predicted, grid_boundaries, stroke_color, datetime_idx);
+                    });
+            }
+            else {
+                alert(result.message);
+            }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.table([{
+                    "错误类型": jqXHR,
+                    "错误信息": textStatus,
+                    "http状态": errorThrown
+                }])
+            }
+        });
+
+    }
+    </script>
+{% endblock %}
+{% block content %}
+    <div class="container">
+    <div class="form-inline" role="form">
+        <form id = "form_to_submit" class="form-inline"  action="" method="POST">
+        <div class="form-group">
+            <label for="time_period" class="control-label"><small>时间周期:</small></label>
+            <select id="time_period" class="form-control input-sm" name="time_period" style="width:70px;">
+                  {% for k, v in time_period.items %}
+                      {% ifequal forloop.counter0 0 %}
+                          <option value="{{ v }}" selected="selected">{{ k }}</option>
+                      {% else %}
+                           <option value="{{ v }}">{{ k }}</option>
+                      {% endifequal %}
+                  {% endfor %}
+            </select>
+       </div>
+        <div class="form-group">
+            <label for="time_segment" class="control-label"><small>时间段:</small></label>
+            <select id="time_segment" class="form-control input-sm" name="time_segment" style="width:120px;">
+                  {% for k, v in time_segment.items %}
+                      {% ifequal forloop.counter0 0 %}
+                          <option value="{{ v }}" selected="selected">{{ k }}</option>
+                      {% else %}
+                           <option value="{{ v }}">{{ k }}</option>
+                      {% endifequal %}
+                  {% endfor %}
+            </select>
+       </div>
+        <div class="form-group">
+                <input onclick="submit_form()" class="btn btn-primary btn-sm"  style="width: 80px;" value="查询"/>
+                {% csrf_token %}
+        </div>
+        </form>
+        <div class="form-group" id="slider_div" style="display: none">
+            <label for="dt_query" >请滑动下方滑动条, 改变日期:</label>
+            <input type="text" class="form-control form-date input-sm" value="{{ date_start }}" style="width: 180px;"  id="datetimepicker" data-date-format="yyyy-mm-dd hh:ii:ss">
+        </div>
+        </div>
+    </div>
+    <div id="allmap">
+        <div id="left_map">
+
+        </div>
+        <div id="right_map">
+
+        </div>
+    </div>
+{% endblock %}
+{% block endscript %}
+<script type="text/javascript">
+
+	// 百度地图API功能
+	var lmap = new BMap.Map("left_map");
+	lmap.centerAndZoom(new BMap.Point(116.404, 39.915), 13);     // 初始化地图,设置中心点坐标和地图级别
+
+    var rmap = new BMap.Map("right_map");
+	rmap.centerAndZoom(new BMap.Point(116.404, 39.915), 13);     // 初始化地图,设置中心点坐标和地图级别
+
+    $('#datetimepicker').datetimepicker({
+        language:'zh-CN',
+        autoclose:1,
+        minuteStep:1});
+
+    var gradient = new gradientColor('#FFFFFF','#FF0000',255);
+    function redraw_freqency_of_real_and_predicted(color_matrix_real, color_matrix_predicted, grid_boundaries, stroke_color, datetime_idx) {
+        lmap.clearOverlays();
+        var color_array_real = color_matrix_real[datetime_idx];
+        for (var i = 0; i < grid_boundaries.length; i++  ) {
+            var min_lng = grid_boundaries[i][0];
+            var max_lng = grid_boundaries[i][1];
+            var min_lat = grid_boundaries[i][2];
+            var max_lat = grid_boundaries[i][3];
+            var color = color_array_real[i];
+
+            var polygon = new BMap.Polygon([
+                new BMap.Point(min_lng, min_lat),
+                new BMap.Point(max_lng, min_lat),
+                new BMap.Point(max_lng, max_lat),
+                new BMap.Point(min_lng, max_lat)
+            ], {
+                strokeColor: stroke_color,
+                strokeWeight: 1,
+                strokeOpacity: 1,
+                fillColor: gradient[color],
+                fillOpacity: 0.5
+            });
+
+            lmap.addOverlay(polygon);
+        }
+
+        rmap.clearOverlays();
+        var color_array_predicted = color_matrix_predicted[datetime_idx];
+        for (i = 0; i < grid_boundaries.length; i++  ) {
+            min_lng = grid_boundaries[i][0];
+            max_lng = grid_boundaries[i][1];
+            min_lat = grid_boundaries[i][2];
+            max_lat = grid_boundaries[i][3];
+            color = color_array_predicted[i];
+
+            var polygon = new BMap.Polygon([
+                new BMap.Point(min_lng, min_lat),
+                new BMap.Point(max_lng, min_lat),
+                new BMap.Point(max_lng, max_lat),
+                new BMap.Point(min_lng, max_lat)
+            ], {
+                strokeColor: stroke_color,
+                strokeWeight: 1,
+                strokeOpacity: 1,
+                fillColor: gradient[color],
+                fillOpacity: 0.5
+            });
+
+            rmap.addOverlay(polygon);
+        }
+    }
+</script>
+
+{% endblock %}

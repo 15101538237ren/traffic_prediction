@@ -1,0 +1,27 @@
+{
+    "legend": {
+        "data": ["real freq", "predicted freq"]
+    },
+    "series": [
+        {
+            "data": [],
+            "name": "real freq",
+            "type": "line"
+        },
+        {
+            "data": [],
+            "name": "predicted freq",
+            "type": "line"
+        }
+    ],
+    "xAxis": [
+        {
+            "boundaryGap": false,
+            "data": [],
+            "type": "category"
+        }
+    ],
+    "yAxis": {
+        "type": "value"
+    }
+}

@@ -3,7 +3,10 @@ from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.http import JsonResponse
 from traffic_prediction.base import *
+from traffic_prediction.helpers import *
 from data_processing.preprocessing import *
+
+import simplejson
 
 # Create your views here.
 
@@ -11,28 +14,22 @@ def index(request):
     return render_to_response('index.html', locals(), context_instance=RequestContext(request))
 
 def timeline(request):
-    start_time = datetime.datetime.strptime("2016-05-04 18:00:00", SECOND_FORMAT)
-    end_time = datetime.datetime.strptime("2016-05-20 15:00:00", SECOND_FORMAT)
-    time_interval = 30
-    dt_list = get_all_datetimes(start_time, end_time, time_interval=time_interval)
-    dt_start = start_time.strftime(SECOND_FORMAT)
+    dt_list, _ = generate_timelist(settings.START_TIME, settings.END_TIME, settings.MINUTES_INTERVAL)
+    dt_start = settings.START_TIME.strftime(SECOND_FORMAT)
     slider_cnts = len(dt_list)
-    print slider_cnts
     return render_to_response('timeline.html', locals(), context_instance=RequestContext(request))
 
 def grid_timeline(request):
-    time_interval = 30
     if request.method == 'GET':
-        start_time = datetime.datetime.strptime("2016-05-04 18:00:00",SECOND_FORMAT)
-        end_time = datetime.datetime.strptime("2016-05-20 00:00:00",SECOND_FORMAT)
-        dt_list = get_all_datetimes(start_time, end_time, time_interval=time_interval)
-        dt_start = start_time.strftime(SECOND_FORMAT)
+        dt_list,_ = generate_timelist(settings.START_TIME, settings.END_TIME, settings.MINUTES_INTERVAL)
+        dt_start = settings.START_TIME.strftime(SECOND_FORMAT)
         slider_cnts = len(dt_list)
         return render_to_response('grid_timeline.html', locals(), context_instance=RequestContext(request))
     else:
-        datetime_query = request.POST.get("query_dt", "2016-05-04 18:00:00")
+        datetime_query = request.POST.get("query_dt", settings.START_TIME.strftime(SECOND_FORMAT))
+
         from_dt = datetime.datetime.strptime(datetime_query,SECOND_FORMAT)
-        end_dt = from_dt + datetime.timedelta(minutes=time_interval)
+        end_dt = from_dt + settings.MINUTES_INTERVAL
 
         out_data_file = BASE_DIR+'/static/js/grid_timeline.js'
 
@@ -44,28 +41,105 @@ def grid_timeline(request):
 
         return JsonResponse(response_dict)
 
-def region_difference(request):
-    time_interval = 60
-    spatial_interval = 1000
-    day_interval = 7
-    start_time = datetime.datetime.strptime("2016-05-24 00:00:00",SECOND_FORMAT)
-    end_time = datetime.datetime.strptime("2016-12-31 00:00:00",SECOND_FORMAT)
+def freqency_timeline(request):
+    if request.method == 'GET':
+        time_period = settings.TIME_PERIODS
+        time_segment = base.TIME_SEGMENTS_LABELS
+        date_start = settings.START_TIME
+        return render_to_response('freqency_timeline.html', locals(), context_instance=RequestContext(request))
+    else:
+        time_period_selected = int(request.POST.get("time_period", '7'))
+        time_segment_selected = int(request.POST.get("time_segment", '0'))
+        return_dict = {}
+        return_dict['datetime_list'], _ = generate_timelist(settings.START_TIME, settings.END_TIME, datetime.timedelta(days=time_period_selected))
+        return_dict['slider_cnts'] = len(return_dict['datetime_list'])
+        return_dict['grid_boundaries'] = GRID_LNG_LAT_COORDS
+        freq_matrix_dict, max_freq_dict,_ = obtain_frequency_matrix()
+        frequency_matrix = freq_matrix_dict[datetime.timedelta(days=time_period_selected)][time_segment_selected]
+        max_frequency = max_freq_dict[datetime.timedelta(days=time_period_selected)]
 
-    region_point_frequency_matrix = generate_region_point_frequency(start_time, end_time, day_interval)
+        return_dict['color_matrix'] = generate_color_matrix(frequency_matrix, max_frequency)
 
-    out_js_file = BASE_DIR+'/static/js/region.js'
-    # region_difference_calc(start_time, end_time, time_interval,spatial_interval, out_js_file)
-    return render_to_response('region_diff.html', locals(), context_instance=RequestContext(request))
+        json_fp = settings.os.path.join(settings.JSON_DIR, "freq_matrix.json")
+        with open(json_fp,"w") as json_file:
+            json_str = simplejson.dumps(return_dict, cls=DatetimeJSONEncoder)
+            json_file.write(json_str)
+            print "dump %s sucessful!" % json_fp
+        addr = '/static/json/freq_matrix.json'
 
+        response_dict = {}
+        response_dict["code"] = 0
+        response_dict["addr"] = addr
 
+        return JsonResponse(response_dict)
+
+def predict_result_comparision(request):
+    if request.method == 'GET':
+        time_period = settings.TIME_PERIODS
+        time_segment = base.TIME_SEGMENTS_LABELS
+        date_start = settings.START_TIME
+        return render_to_response('predict_result_comparision.html', locals(), context_instance=RequestContext(request))
+    else:
+        time_period_selected = int(request.POST.get("time_period", '7'))
+        time_segment_selected = int(request.POST.get("time_segment", '0'))
+        datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, _ , _ = load_prediction_result(time_period_selected, time_segment_selected)
+        return_dict = {}
+        return_dict['datetime_list'] = datetime_list
+        return_dict['slider_cnts'] = len(datetime_list)
+        return_dict['grid_boundaries'] = GRID_LNG_LAT_COORDS
+        return_dict['color_matrix_real'] = generate_color_matrix(frequency_matrix_real, max_frequency)
+        return_dict['color_matrix_predicted'] = generate_color_matrix(frequency_matrix_predicted, max_frequency)
+        name_of_json_file = 'predict_result_comparision.json'
+
+        json_fp = settings.os.path.join(settings.JSON_DIR, name_of_json_file)
+        with open(json_fp, "w") as json_file:
+            json_str = simplejson.dumps(return_dict, cls=DatetimeJSONEncoder)
+            json_file.write(json_str)
+            print "dump %s sucessful!" % json_fp
+        addr = '/static/json/' + name_of_json_file
+
+        response_dict = {}
+        response_dict["code"] = 0
+        response_dict["addr"] = addr
+
+        return JsonResponse(response_dict)
+
+def predicted_line_chart(request):
+    if request.method == 'GET':
+        time_period = settings.TIME_PERIODS
+        time_segment = base.TIME_SEGMENTS_LABELS
+        date_start = settings.START_TIME
+        return render_to_response('predicted_line_chart.html', locals(), context_instance=RequestContext(request))
+    else:
+        time_period_selected = int(request.POST.get("time_period", '7'))
+        time_segment_selected = int(request.POST.get("time_segment", '0'))
+        ret_dict = {'grid_boundaries': GRID_LNG_LAT_COORDS}
+        _, _, _, _, ret_dict['datetime_str_list'], ret_dict['real_frequency'], ret_dict['predicted_frequency'] = load_prediction_result(time_period_selected, time_segment_selected)
+
+        name_of_json_file = "predicted_line_chart.json"
+        json_fp = settings.os.path.join(settings.JSON_DIR, name_of_json_file)
+
+        with open(json_fp, "w") as json_file:
+            json_str = simplejson.dumps(ret_dict)
+            json_file.write(json_str)
+            print "dump %s sucessful!" % json_fp
+
+        addr = '/static/json/' + name_of_json_file
+        response_dict = {}
+        response_dict["code"] = 0
+        response_dict["addr"] = addr
+        option_addr = '/static/json/line_chart_option.json'
+        response_dict["option_addr"] = option_addr
+        return JsonResponse(response_dict)
 @ajax_required
 def query_status(request):
-    time_interval = 30
-    datetime_query = request.POST.get("query_dt","2016-05-04 18:00:00")
-    from_dt = datetime.datetime.strptime(datetime_query,SECOND_FORMAT)
-    end_dt = from_dt + datetime.timedelta(minutes=time_interval)
-    get_geo_points_from(from_dt, end_dt, type="violation")
-    addr = '/static/points.json'
+    datetime_query = request.POST.get("query_dt", settings.START_TIME.strftime(SECOND_FORMAT))
+
+    from_dt = datetime.datetime.strptime(datetime_query, SECOND_FORMAT)
+    end_dt = from_dt + settings.MINUTES_INTERVAL
+    geo_points_list_tmp, _ = obtain_origin_data()
+    get_geo_points_from(geo_points_list_tmp, from_dt, end_dt, write=True)
+    addr = '/static/json/geo_points.json'
     response_dict = {}
     response_dict["code"] = 0
     response_dict["addr"] = addr

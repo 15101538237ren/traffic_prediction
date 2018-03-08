@@ -13,8 +13,8 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
-from base import origin_dir, read_origin_data_into_geo_point_list
 from os.path import normpath,join
+from datetime import datetime, timedelta
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -104,8 +104,6 @@ USE_L10N = True
 
 USE_TZ = False
 
-
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
@@ -115,8 +113,19 @@ STATICFILES_DIRS = (
     normpath(join(BASE_DIR, 'static')),
 )
 
-accident_fp = os.path.join(origin_dir, "accident_loc.tsv")
-violation_fp = os.path.join(origin_dir, "violation_loc.tsv")
+MINUTES_INTERVAL = timedelta(minutes=30)
+TIME_PERIODS = {'1_days': 1, '3_days': 3, '7_days': 7, '30_days': 30}
+TIME_PERIODS_INT_TO_STR = {v: k for k, v in TIME_PERIODS.items()}
+DAYS_INTERVALS, DAYS_INTERVALS_LABEL = [], []
+for k, v in TIME_PERIODS.items():
+    DAYS_INTERVALS.append(timedelta(days=v))
+    DAYS_INTERVALS_LABEL.append(k)
+SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
+#START_TIME = datetime.datetime.strptime("2016-05-04 18:00:00", "%Y-%m-%d %H:%M:%S")
+#END_TIME = datetime.datetime.strptime("2016-06-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 
-accident_geo_points_list, accident_time_segment_list  = read_origin_data_into_geo_point_list(accident_fp, max_lines=200)
-violation_geo_points_list, violation_time_segment_list  = read_origin_data_into_geo_point_list(violation_fp, max_lines=200)
+START_TIME = datetime.strptime("2016-01-01 00:00:00", SECOND_FORMAT)
+END_TIME = datetime.strptime("2017-12-20 00:00:00", SECOND_FORMAT)
+TRAINING_DATETIME_SLOT = [START_TIME, datetime.strptime("2017-08-20 21:30:00", SECOND_FORMAT)]
+TESTING_DATETIME_SLOT = [datetime.strptime("2017-10-12 00:05:30", SECOND_FORMAT),END_TIME]
+JSON_DIR = os.path.join(BASE_DIR, "static", "json")
