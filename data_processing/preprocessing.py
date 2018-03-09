@@ -163,6 +163,7 @@ def obtain_origin_data():
     global geo_points_list, time_segment_list
     if not geo_points_list:
         geo_points_list, time_segment_list = base.read_origin_data_into_geo_point_list(base.FILE_FP, max_lines=base.MAX_LINES)
+
     return [geo_points_list, time_segment_list]
 
 def generate_frequency_matrix(start_time, end_time, day_intervals, outpkl_path, dump=False):
@@ -329,5 +330,5 @@ def load_prediction_result(int_time_period, time_segment_i):
     del datetime_dict, frequency_matrix_dict_real, frequency_matrix_dict_predicted
     return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, datetime_str_list, real_frequency, predicted_frequency
 if __name__ == "__main__":
-    # generate_freq_data_pipline()
+    generate_freq_data_pipline()
     generate_train_and_test_data_pipline()

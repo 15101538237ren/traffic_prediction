@@ -15,6 +15,7 @@ def index(request):
 
 def timeline(request):
     dt_list, _ = generate_timelist(settings.START_TIME, settings.END_TIME, settings.MINUTES_INTERVAL)
+    dt_list = [item.strftime(SECOND_FORMAT) for item in dt_list]
     dt_start = settings.START_TIME.strftime(SECOND_FORMAT)
     slider_cnts = len(dt_list)
     return render_to_response('timeline.html', locals(), context_instance=RequestContext(request))
@@ -22,13 +23,13 @@ def timeline(request):
 def grid_timeline(request):
     if request.method == 'GET':
         dt_list,_ = generate_timelist(settings.START_TIME, settings.END_TIME, settings.MINUTES_INTERVAL)
+        dt_list = [item.strftime(SECOND_FORMAT) for item in dt_list]
         dt_start = settings.START_TIME.strftime(SECOND_FORMAT)
         slider_cnts = len(dt_list)
         return render_to_response('grid_timeline.html', locals(), context_instance=RequestContext(request))
     else:
         datetime_query = request.POST.get("query_dt", settings.START_TIME.strftime(SECOND_FORMAT))
-
-        from_dt = datetime.datetime.strptime(datetime_query,SECOND_FORMAT)
+        from_dt = datetime.datetime.strptime(datetime_query, SECOND_FORMAT)
         end_dt = from_dt + settings.MINUTES_INTERVAL
 
         out_data_file = BASE_DIR+'/static/js/grid_timeline.js'
@@ -82,7 +83,8 @@ def predict_result_comparision(request):
     else:
         time_period_selected = int(request.POST.get("time_period", '7'))
         time_segment_selected = int(request.POST.get("time_segment", '0'))
-        datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, _ , _ = load_prediction_result(time_period_selected, time_segment_selected)
+        datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, _ , _, _ = load_prediction_result(time_period_selected, time_segment_selected)
+
         return_dict = {}
         return_dict['datetime_list'] = datetime_list
         return_dict['slider_cnts'] = len(datetime_list)

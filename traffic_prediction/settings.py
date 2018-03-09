@@ -120,7 +120,8 @@ DAYS_INTERVALS, DAYS_INTERVALS_LABEL = [], []
 for k, v in TIME_PERIODS.items():
     DAYS_INTERVALS.append(timedelta(days=v))
     DAYS_INTERVALS_LABEL.append(k)
-SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
+SECOND_FORMAT = u"%Y-%m-%d %H:%M:%S"
+SECOND_FORMAT_CN = u"%Y年%m月%d日 %H:%M:%S"
 #START_TIME = datetime.datetime.strptime("2016-05-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 #END_TIME = datetime.datetime.strptime("2016-06-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 
