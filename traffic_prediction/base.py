@@ -2,7 +2,7 @@
 import os, datetime, math, simplejson, decimal, bisect,time, random
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POINT_TYPE = "accident"
+POINT_TYPE = "violation"
 data_dir = os.path.join(BASE_DIR, "data")
 origin_dir = os.path.join(data_dir, "origin")
 
@@ -16,7 +16,7 @@ SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
-IS_TIME_SEGMENT = True
+IS_TIME_SEGMENT = False
 
 TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
 TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24

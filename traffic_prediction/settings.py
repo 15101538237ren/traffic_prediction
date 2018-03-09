@@ -124,8 +124,8 @@ SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
 #START_TIME = datetime.datetime.strptime("2016-05-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 #END_TIME = datetime.datetime.strptime("2016-06-04 18:00:00", "%Y-%m-%d %H:%M:%S")
 
-START_TIME = datetime.strptime("2016-01-01 00:00:00", SECOND_FORMAT)
-END_TIME = datetime.strptime("2017-12-20 00:00:00", SECOND_FORMAT)
-TRAINING_DATETIME_SLOT = [START_TIME, datetime.strptime("2017-08-20 21:30:00", SECOND_FORMAT)]
-TESTING_DATETIME_SLOT = [datetime.strptime("2017-10-12 00:05:30", SECOND_FORMAT),END_TIME]
+START_TIME = datetime.strptime("2016-05-06 17:30:00", SECOND_FORMAT)
+END_TIME = datetime.strptime("2018-01-03 15:30:00", SECOND_FORMAT)
+TRAINING_DATETIME_SLOT = [START_TIME, datetime.strptime("2017-06-30 00:00:00", SECOND_FORMAT)]
+TESTING_DATETIME_SLOT = [datetime.strptime("2017-07-01 00:00:00", SECOND_FORMAT),END_TIME]
 JSON_DIR = os.path.join(BASE_DIR, "static", "json")

@@ -67,7 +67,7 @@ def residual_test(residual,lags =31):
     plt.show()
 
     # Durbin-Watson test: 2, no autocorrelation; 4: negtive autocorrelation; 0: positive autocorrelation
-    print sm.stats.durbin_watson(arma_moddel.resid.values)
+    #print sm.stats.durbin_watson(arma_moddel.resid.values)
 
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111)

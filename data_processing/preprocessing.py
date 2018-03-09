@@ -329,5 +329,5 @@ def load_prediction_result(int_time_period, time_segment_i):
     del datetime_dict, frequency_matrix_dict_real, frequency_matrix_dict_predicted
     return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, datetime_str_list, real_frequency, predicted_frequency
 if __name__ == "__main__":
-    # generate_freq_data_pipline()
+    generate_freq_data_pipline()
     generate_train_and_test_data_pipline()
