@@ -65,7 +65,7 @@ def freqency_timeline(request):
         with open(json_fp,"w") as json_file:
             json_str = simplejson.dumps(return_dict, cls=DatetimeJSONEncoder)
             json_file.write(json_str)
-            print "dump %s sucessful!" % json_fp
+            print ("dump %s sucessful!" % json_fp)
         addr = '/static/json/freq_matrix.json'
 
         response_dict = {}
@@ -97,7 +97,7 @@ def predict_result_comparision(request):
         with open(json_fp, "w") as json_file:
             json_str = simplejson.dumps(return_dict, cls=DatetimeJSONEncoder)
             json_file.write(json_str)
-            print "dump %s sucessful!" % json_fp
+            print ("dump %s sucessful!" % json_fp)
         addr = '/static/json/' + name_of_json_file
 
         response_dict = {}
@@ -124,7 +124,7 @@ def predicted_line_chart(request):
         with open(json_fp, "w") as json_file:
             json_str = simplejson.dumps(ret_dict)
             json_file.write(json_str)
-            print "dump %s sucessful!" % json_fp
+            print ("dump %s sucessful!" % json_fp)
 
         addr = '/static/json/' + name_of_json_file
         response_dict = {}

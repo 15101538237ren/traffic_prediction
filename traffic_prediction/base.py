@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os, datetime, math, simplejson, decimal, bisect,time, random
 
+from numpy import unicode
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POINT_TYPE = "violation"
 data_dir = os.path.join(BASE_DIR, "data")
@@ -90,7 +92,7 @@ def get_timedelta_of_timesegment(time_segment_i):
 
 # 输入数据路径, 读取max_lines行, 返回所有点的列表，以及对应时间段的点列表
 def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\n", max_lines = -1):
-    print 'start reading %s' % input_file_path
+    print ('start reading %s' % input_file_path)
 
     t0 = time.time()
     geo_points_list = []
@@ -117,7 +119,7 @@ def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\
             time_segment_list[time_segment].append(geo_point) ##将点添加到相应的segment list中
             line = input_file.readline()
     t1 = time.time()
-    print 'finish reading %s in %.2f seconds' % (input_file_path, t1 - t0)
+    print ('finish reading %s in %.2f seconds' % (input_file_path, t1 - t0))
     return geo_points_list, time_segment_list
 
 #给定起始、结束日期时间
@@ -154,4 +156,4 @@ def write_sequence_array_into_file(out_fp, seq_arr, sep="\t", line_end = "\n"):
             ltw = sep.join([str(item) for item in titem])
             ltws.append(ltw)
         out_f.write(line_end.join(ltws))
-    print "writing %s sucessful" % out_fp
+    print ("writing %s sucessful" % out_fp)
