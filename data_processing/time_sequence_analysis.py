@@ -78,7 +78,7 @@ def residual_test(residual,lags =31):
 
 # 用ARMA模型预测时间序列, p, q 为模型参数
 def time_seq_prediction_by_arma(ts, time_str, p=1 , q=1):
-    # draw_time_series(ts)
+    draw_time_series(ts)
     draw_acf_pacf(ts)
     # unit_root_test(ts)
     arma_moddel = ARMA(ts, (p, q)).fit()

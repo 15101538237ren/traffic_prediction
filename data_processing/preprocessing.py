@@ -163,6 +163,7 @@ def obtain_origin_data():
     global geo_points_list, time_segment_list
     if not geo_points_list:
         geo_points_list, time_segment_list = base.read_origin_data_into_geo_point_list(base.FILE_FP, max_lines=base.MAX_LINES)
+
     return [geo_points_list, time_segment_list]
 
 def generate_frequency_matrix(start_time, end_time, day_intervals, outpkl_path, dump=False):
