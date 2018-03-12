@@ -218,9 +218,9 @@ def obtain_frequency_matrix():
             print ("start load pickle file %s" % (base.freq_matrix_pkl_path))
 
             with open(base.freq_matrix_pkl_path, "rb") as pickle_file:
-                frequency_matrix_dict = pickle.load(pickle_file,encoding='iso-8859-1')
-                max_frequency_dict = pickle.load(pickle_file,encoding='iso-8859-1')
-                left_datetimes_arr = pickle.load(pickle_file,encoding='iso-8859-1')
+                frequency_matrix_dict = pickle.load(pickle_file,encoding='bytes')
+                max_frequency_dict = pickle.load(pickle_file,encoding='bytes')
+                left_datetimes_arr = pickle.load(pickle_file,encoding='bytes')
     return frequency_matrix_dict, max_frequency_dict, left_datetimes_arr
 
 def generate_freq_data_pipline():

@@ -24,12 +24,12 @@ def load_data(training_dir_fp, testing_dir_fp, sep = '\t', line_end = '\n'):
     train, x_train, y_train, x_test, y_test, time_segs, region_ids, date_times = [], [], [], [], [], [], [], []
     for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
         training_data_fp = os.path.join(training_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
-        with open(training_data_fp, 'rb') as train_f:
+        with open(training_data_fp, 'r') as train_f:
             for idx, item in enumerate(train_f.read().split(line_end)):
                 if idx and item != "":
                     train.append([float(it) for it in item.split(sep)])
         testing_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
-        with open(testing_data_fp, 'rb') as testing_f:
+        with open(testing_data_fp, 'r') as testing_f:
             for idx, item in enumerate(testing_f.read().split(line_end)):
                 if idx and item != "":
                     item_arr = item.split(sep)

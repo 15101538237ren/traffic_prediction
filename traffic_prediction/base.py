@@ -18,7 +18,7 @@ SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
-IS_TIME_SEGMENT = False
+IS_TIME_SEGMENT = True
 
 TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
 TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24
