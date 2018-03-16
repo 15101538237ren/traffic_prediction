@@ -135,7 +135,9 @@ def generate_region_point_frequency(time_segment_list_tmp,left_datetimes, right_
         region_point_frequency = []  # 事件发生频率
         for region_point_count in region_point_counts_in_time_segment_and_date_segment:
             freq = region_point_count/day/base.TIME_SEGMENT_HOURS[time_segment_i]
-            region_point_frequency.append(freq)
+            one_hot_label_of_freq = base.FREQUENCY_DEGREE_DICT[base.frequency_degree_judge(freq)]
+            region_point_frequency.append(one_hot_label_of_freq)
+            #region_point_frequency.append(freq)
 
             max_frequency = freq if freq > max_frequency else max_frequency
         region_point_frequency_matrix_in_time_segment.append(region_point_frequency) # list内每一个元素为一个矩阵
@@ -332,4 +334,20 @@ def load_prediction_result(int_time_period, time_segment_i):
     return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, datetime_str_list, real_frequency, predicted_frequency
 if __name__ == "__main__":
     generate_freq_data_pipline()
-    generate_train_and_test_data_pipline()
+    # generate_train_and_test_data_pipline()
+    # dt_start = datetime.datetime.strptime("2016-05-04 18:00:00", base.SECOND_FORMAT)
+    # dt_end = datetime.datetime.strptime("2016-06-04 18:23:00", base.SECOND_FORMAT)
+    # day_interval = 7
+    # # dt_start = datetime.datetime.strptime("2016-01-01 00:00:00", base.SECOND_FORMAT)
+    # # dt_end = datetime.datetime.strptime("2016-02-01 00:00:00", base.SECOND_FORMAT)
+    # outpkl_path = os.path.join(base.data_dir, "intermediate", "region_point_frequency_matrix_by_time_segment_new.pkl")
+    #
+    # generate_frequency_matrix_by_time_segment(dt_start, dt_end, day_interval, outpkl_path)
+    #
+    #
+    # with open(outpkl_path, "rb") as pickle_file:
+    #    frequency_matrix_by_time_segment = pickle.load(pickle_file)
+    #
+    # for i in range(6):
+    #     print (frequency_matrix_by_time_segment[i])
+    pass

@@ -18,7 +18,7 @@ SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
-IS_TIME_SEGMENT = True
+IS_TIME_SEGMENT = False
 
 TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
 TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24
@@ -34,7 +34,10 @@ TIME_SEGMENTS_LABELS = {u'凌晨 0:00-7:00': 0, u'早高峰 7:00-9:00': 1, u'早
                         u'中午 12:00-14:00': 3, u'下午 14:00-20:00': 4, u'晚间 20:00-24:00': 5} if IS_TIME_SEGMENT \
                         else {unicode(str(item)): item for item in range(TIME_SEGMENT_LENGTH)}
 
-freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+FREQUENCY_DEGREE_DICT = {0:[1,0,0,0,0,0], 1:[0,1,0,0,0,0], 2:[0,0,1,0,0,0], 3:[0,0,0,1,0,0], 4:[0,0,0,0,1,0], 5:[0,0,0,0,0,1]}
+
+freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data_new", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+# freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 training_data_dir = os.path.join(data_dir, "intermediate", "training_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 testing_data_dir = os.path.join(data_dir, "intermediate", "testing_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 model_dir = os.path.join(data_dir, "intermediate", "model", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
@@ -60,6 +63,23 @@ LNG_COORDINATES = [MIN_LNG + i_LNG * LNG_DELTA for i_LNG in range(N_LNG + 1)]
 LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
 GRID_LNG_LAT_COORDS = [[LNG_COORDINATES[i_LNG], LNG_COORDINATES[i_LNG + 1], LAT_COORDINATES[j_LAT], LAT_COORDINATES[j_LAT + 1]]  for i_LNG in range(N_LNG) for j_LAT in range(N_LAT)]
+
+#事件频率等级
+def frequency_degree_judge(freq):
+    if freq>=0.0 and freq < 0.2:
+        frequency_degree = 0
+    elif freq>=0.2 and freq < 0.4:
+        frequency_degree = 1
+    elif freq>= 0.4 and freq < 0.6:
+        frequency_degree = 2
+    elif freq>= 0.6 and freq < 0.8:
+        frequency_degree = 3
+    elif freq>= 0.8 and freq < 1.0:
+        frequency_degree = 4
+    else:
+        frequency_degree = 5
+    return frequency_degree
+
 
 def time_segment_judge(hour, is_time_segment = True):
     if is_time_segment:
