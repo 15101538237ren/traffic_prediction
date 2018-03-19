@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from traffic_prediction import base
+from traffic_prediction import base, helpers
 from traffic_prediction import settings
 import os, json, urllib2, math, simplejson, datetime, time, pickle
 import numpy as np
@@ -68,7 +68,7 @@ def get_geo_points_from(points_in_time_segment, dt_start, dt_end, write = True):
             geo_point_tmp["create_time"] = geo_point[0]
             geo_points_to_dump.append(geo_point_tmp)
 
-        js_str = simplejson.dumps(geo_points_to_dump, use_decimal=True,cls=base.DatetimeJSONEncoder)
+        js_str = simplejson.dumps(geo_points_to_dump, use_decimal=True,cls=helpers.DatetimeJSONEncoder)
         file_to_wrt.write(js_str)
     return points_in_time_segment_and_date_segment
 
@@ -219,7 +219,7 @@ def obtain_frequency_matrix():
             with open(base.freq_matrix_pkl_path, "rb") as pickle_file:
                 frequency_matrix_dict = pickle.load(pickle_file)
                 max_frequency_dict = pickle.load(pickle_file)
-                left_datetimes_arr = pickle.load(pickle_file)
+                left_datetimes_arr = pickle.load(pickle_file, encoding='iso-8859-1')
     return frequency_matrix_dict, max_frequency_dict, left_datetimes_arr
 
 def generate_freq_data_pipline():

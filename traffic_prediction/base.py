@@ -13,14 +13,15 @@ FILE_FP = accident_fp if POINT_TYPE == "accident" else violation_fp
 MAX_LINES = -1
 
 SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
-
+ONLY_TIME_FORMAT = "%H:%M:%S"
 SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
 IS_TIME_SEGMENT = True
 
 TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
 TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24
-
+TIME_SEGMENT_START_TIME = {0: 0, 1: 7, 2: 9, 3: 12, 4: 14, 5: 20}
+TIME_SEGMENT_START_TIME_DICT = {item: datetime.datetime(2000, 1, 1, TIME_SEGMENT_START_TIME[item], 0, 0, 0).strftime(ONLY_TIME_FORMAT) for item in range(TIME_SEGMENT_LENGTH)} if IS_TIME_SEGMENT else {item: datetime.datetime(2000, 1, 1, item, 0, 0, 0).strftime(ONLY_TIME_FORMAT) for item in range(TIME_SEGMENT_LENGTH)}
 SEGMENT_FILE_PRE = 'seg_'
 SEQUENCE_LENGTH_DICT = {1: 29, 3: 19, 7: 4, 30: 1}
 
@@ -58,6 +59,22 @@ LNG_COORDINATES = [MIN_LNG + i_LNG * LNG_DELTA for i_LNG in range(N_LNG + 1)]
 LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
 
 GRID_LNG_LAT_COORDS = [[LNG_COORDINATES[i_LNG], LNG_COORDINATES[i_LNG + 1], LAT_COORDINATES[j_LAT], LAT_COORDINATES[j_LAT + 1]]  for i_LNG in range(N_LNG) for j_LAT in range(N_LAT)]
+
+
+# 读取tab分隔的文件(input_file_path) 的第target_col_index, 返回该列的所有值到一个list
+def read_tab_seperated_file_and_get_target_column(target_col_index, input_file_path, start_line= 1, sep="\t",line_end = "\n"):
+    ret_value_list = []
+    line_counter = 0
+    with open(input_file_path, "r") as input_file:
+        line = input_file.readline()
+        while line:
+            line_counter += 1
+            if line_counter >= start_line:
+                line_contents = line.split(sep)
+                led = line_contents[target_col_index].strip(line_end)
+                ret_value_list.append(led)
+            line = input_file.readline()
+    return ret_value_list
 
 def time_segment_judge(hour, is_time_segment = True):
     if is_time_segment:
