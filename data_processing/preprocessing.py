@@ -301,24 +301,25 @@ def load_prediction_result(int_time_period, time_segment_i):
 
     max_frequency = -999999
     day_interval_str = settings.TIME_PERIODS_INT_TO_STR[int_time_period]
-    predict_result_fp = os.path.join(base.predict_result_dir, day_interval_str, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+    predict_result_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
 
     with open(predict_result_fp, "r") as predict_result_f:
         lines = predict_result_f.read().split("\n")
         for line in lines:
-            line_arr = line.split("\t")
-            datetime_str = line_arr[1]
-            if datetime_str not in datetime_dict.keys():
-                datetime_dict[datetime_str] = 1
-                frequency_matrix_dict_real[datetime_str] = [0. for rid in range(base.N_LNG * base.N_LAT)]
-                frequency_matrix_dict_predicted[datetime_str] = [0. for rid in range(base.N_LNG * base.N_LAT)]
-            region_id = int(line_arr[0])
-            real_freq = float(line_arr[2])
-            predicted_freq = float(line_arr[3])
-            frequency_matrix_dict_real[datetime_str][region_id] = real_freq
-            frequency_matrix_dict_predicted[datetime_str][region_id] = predicted_freq
-            real_frequency[region_id].append(real_freq)
-            predicted_frequency[region_id].append(predicted_freq)
+            if line != "":
+                line_arr = line.split("\t")
+                datetime_str = line_arr[1]
+                if datetime_str not in datetime_dict.keys():
+                    datetime_dict[datetime_str] = 1
+                    frequency_matrix_dict_real[datetime_str] = [0. for rid in range(base.N_LNG * base.N_LAT)]
+                    frequency_matrix_dict_predicted[datetime_str] = [0. for rid in range(base.N_LNG * base.N_LAT)]
+                region_id = int(line_arr[0])
+                real_freq = float(line_arr[2])
+                predicted_freq = float(line_arr[3])
+                frequency_matrix_dict_real[datetime_str][region_id] = real_freq
+                frequency_matrix_dict_predicted[datetime_str][region_id] = predicted_freq
+                real_frequency[region_id].append(real_freq)
+                predicted_frequency[region_id].append(predicted_freq)
     for datetime_key in sorted(datetime_dict.keys()):
         datetime_list.append(datetime.datetime.strptime(datetime_key, base.SECOND_FORMAT))
         datetime_str_list.append(datetime_key.split(" ")[0])
