@@ -332,18 +332,22 @@ def load_prediction_result(int_time_period, time_segment_i):
 
     del datetime_dict, frequency_matrix_dict_real, frequency_matrix_dict_predicted
     return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, datetime_str_list, real_frequency, predicted_frequency
+
 if __name__ == "__main__":
+    start_time = datetime.datetime.strptime("2016-05-04 18:00:00", base.SECOND_FORMAT)
+    end_time= datetime.datetime.strptime("2018-01-01 18:00:00", base.SECOND_FORMAT)
+    day_intervals = 7
+    outpkl_path = os.path.join(base.data_dir, "intermediate", "region_point_frequency_matrix_by_time_segment_new.pkl")
+
     generate_freq_data_pipline()
     # generate_train_and_test_data_pipline()
-    # dt_start = datetime.datetime.strptime("2016-05-04 18:00:00", base.SECOND_FORMAT)
-    # dt_end = datetime.datetime.strptime("2016-06-04 18:23:00", base.SECOND_FORMAT)
-    # day_interval = 7
+
     # # dt_start = datetime.datetime.strptime("2016-01-01 00:00:00", base.SECOND_FORMAT)
     # # dt_end = datetime.datetime.strptime("2016-02-01 00:00:00", base.SECOND_FORMAT)
     # outpkl_path = os.path.join(base.data_dir, "intermediate", "region_point_frequency_matrix_by_time_segment_new.pkl")
     #
     # generate_frequency_matrix_by_time_segment(dt_start, dt_end, day_interval, outpkl_path)
-    #
+    # 
     #
     # with open(outpkl_path, "rb") as pickle_file:
     #    frequency_matrix_by_time_segment = pickle.load(pickle_file)
