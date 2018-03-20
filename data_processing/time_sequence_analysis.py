@@ -4,7 +4,8 @@ from traffic_prediction import base
 from traffic_prediction import settings
 from statsmodels.tsa.stattools import adfuller, acf, ARMA
 import statsmodels.api as sm
-import os, json, urllib2, math, simplejson, datetime, time, pickle
+import os, json, math, simplejson, datetime, time, pickle
+import urllib.request
 import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
@@ -38,7 +39,7 @@ def unit_root_test(ts):
     dfoutput = pd.Series(dftest[0:4], index=['Test Statistic','p-value','#Lags Used','Number of Observations Used'])
     for key,value in dftest[4].items():
         dfoutput['Critical Value (%s)'%key] = value
-    print dfoutput
+    print (dfoutput)
 
 # 自相关和偏相关图，默认阶数为31阶
 def draw_acf_pacf(ts, lags=31):
@@ -67,7 +68,7 @@ def residual_test(residual,lags =31):
     plt.show()
 
     # Durbin-Watson test: 2, no autocorrelation; 4: negtive autocorrelation; 0: positive autocorrelation
-    print sm.stats.durbin_watson(arma_moddel.resid.values)
+    #print sm.stats.durbin_watson(arma_moddel.resid.values)
 
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111)
