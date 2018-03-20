@@ -5,7 +5,10 @@ from __future__ import print_function
 import time, os
 import warnings
 import numpy as np
+import pandas as pd
+from datetime import datetime
 import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import ARMA
 from numpy import newaxis
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
@@ -88,14 +91,13 @@ def predict_point_by_point(model, data):
     predicted = np.reshape(predicted, (predicted.size,))
     return predicted
 
-def model_training_and_saving_pipline():
+def lstm_model_training_and_saving_pipline():
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
-
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
         training_dir_fp = os.path.join(base.training_data_dir, day_interval_str)
         testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str)
         model_dir_fp = os.path.join(base.model_dir, day_interval_str)
-        prediction_fp = os.path.join(base.predict_result_dir, day_interval_str)
+        prediction_fp = os.path.join(base.predict_result_dir, "lstm", day_interval_str)
         dirs_to_create = [model_dir_fp, prediction_fp]
         for dtc in dirs_to_create:
             if not os.path.exists(dtc):
@@ -120,5 +122,80 @@ def model_training_and_saving_pipline():
                     ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
                     ltws.append(ltw)
                 predict_f.write('\n'.join(ltws))
+def arma_model_training_and_saving_pipline():
+    for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
+        day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
+        prediction_fp = os.path.join(base.predict_result_dir, "arma", day_interval_str)
+        dirs_to_create = [prediction_fp]
+        for dtc in dirs_to_create:
+            if not os.path.exists(dtc):
+                os.makedirs(dtc)
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            time_str = " " + base.TIME_SEGMENT_START_TIME_DICT[time_segment_i]
+            input_dir = os.path.join(base.freqency_data_dir, day_interval_str, 'seg_' + str(time_segment_i))
+
+            predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+            with open(predict_result_fp, "w") as predict_f:
+                for rid in range(base.N_LNG * base.N_LAT):
+                    print("now " + str(rid))
+                    df = pd.read_csv(os.path.join(input_dir, str(rid) + '.tsv'), sep='\t', lineterminator='\n', header=0, index_col='datetime',
+                                     encoding='utf-8')
+                    df.index = pd.to_datetime(df.index)
+                    ts = df['avg_count']  # 生成pd.Series对象
+                    ps = qs = [item for item in range(4, -1, -1)]
+                    fit_success = False
+                    ts_pre = ts[settings.TIME_PERIODS_TEST_DATES[day_interval_str][0] + time_str: settings.TIME_PERIODS_TEST_DATES[day_interval_str][1] + time_str]
+                    ts_post = ts[settings.TIME_PERIODS_TEST_DATES[day_interval_str][1] + time_str: settings.TIME_PERIODS_TEST_DATES[day_interval_str][2] + time_str]
+                    dts = [datetime.utcfromtimestamp((item - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')).strftime(base.SECOND_FORMAT) for item in list(ts_post.index.values)]
+                    ts_post = list(ts_post.values)
+
+                    for p in ps:
+                        for q in qs:
+                            try:
+                                arma_moddel = ARMA(ts_pre, (p, q)).fit()
+
+                                fit_success = True
+                                predict_series = arma_moddel.predict(settings.TIME_PERIODS_TEST_DATES[day_interval_str][1] + time_str, settings.TIME_PERIODS_TEST_DATES[day_interval_str][2] + time_str,
+                                                                       dynamic=True)
+                                temp_predict_results = list(predict_series.values)
+                                for item in range(len(ts_post)):
+                                    pdr = temp_predict_results[item]
+                                    if pdr != pdr:
+                                        pdr = 0.0
+                                    ltw = '\t'.join([str(rid), dts[item],
+                                                     str(round(ts_post[item], 4)),
+                                                     str(round(pdr, 4)),
+                                                     str(p),
+                                                     str(q)]) + '\n'
+
+                                    predict_f.write(ltw )
+                            except ValueError, e:
+                                pass
+                            except np.linalg.linalg.LinAlgError, e:
+                                pass
+                            if fit_success:
+                                break
+                        if fit_success:
+                            break
 if __name__ == "__main__":
-    model_training_and_saving_pipline()
+    arma_model_training_and_saving_pipline()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

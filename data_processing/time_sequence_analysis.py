@@ -79,13 +79,14 @@ def residual_test(residual,lags =31):
 
 # 用ARMA模型预测时间序列, p, q 为模型参数
 def time_seq_prediction_by_arma(ts, time_str, p=1 , q=1):
-    draw_time_series(ts)
-    draw_acf_pacf(ts)
+    # draw_time_series(ts)
+    # draw_acf_pacf(ts)
     # unit_root_test(ts)
-    arma_moddel = ARMA(ts, (p, q)).fit()
+    ts_part = ts['2016-01-01' + time_str: '2017-03-02' + time_str]
+    arma_moddel = ARMA(ts_part, (p, q)).fit()
     # print(arma_moddel.aic, arma_moddel.bic, arma_moddel.hqic)
     # residual_test(arma_moddel.resid)
-    predict_sunspots = arma_moddel.predict('2017-01-01' + time_str, '2017-02-27' + time_str)  #
+    predict_sunspots = arma_moddel.predict('2017-03-02' + time_str, '2017-07-27' + time_str, dynamic=True)  #
     print(predict_sunspots)
     fig, ax = plt.subplots(facecolor='white')
     ax = ts.ix['2016-01-01'+ time_str:].plot(ax=ax)
@@ -95,7 +96,7 @@ def time_seq_prediction_by_arma(ts, time_str, p=1 , q=1):
 if __name__ == "__main__":
     day_interval = '3_days'
     time_segment_i = 2
-    region_id = 326
+    region_id = 89
     input_dir_fp = os.path.join(base.freqency_data_dir, day_interval, 'seg_' + str(time_segment_i))
     time_series_fp = os.path.join(input_dir_fp, str(region_id) + '.tsv')
 
@@ -103,4 +104,5 @@ if __name__ == "__main__":
     df.index = pd.to_datetime(df.index)
     ts = df['avg_count']  # 生成pd.Series对象
     time_str = ' 09:00:00'
-    time_seq_prediction_by_arma(ts, time_str, p=3, q=1)
+    date_times = ts.index.values
+    time_seq_prediction_by_arma(ts, time_str, p=2, q=3)
