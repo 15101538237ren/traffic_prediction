@@ -18,7 +18,7 @@ SECOND_FORMAT = "%Y-%m-%d %H:%M:%S"
 ONLY_TIME_FORMAT = "%H:%M:%S"
 SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
-IS_TIME_SEGMENT = False
+IS_TIME_SEGMENT = True
 
 TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
 TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24
@@ -38,8 +38,8 @@ TIME_SEGMENTS_LABELS = {u'凌晨 0:00-7:00': 0, u'早高峰 7:00-9:00': 1, u'早
 
 FREQUENCY_DEGREE_DICT = {0:[1,0,0,0,0,0], 1:[0,1,0,0,0,0], 2:[0,0,1,0,0,0], 3:[0,0,0,1,0,0], 4:[0,0,0,0,1,0], 5:[0,0,0,0,0,1]}
 
-freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data_new", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
-# freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+# freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data_new", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 training_data_dir = os.path.join(data_dir, "intermediate", "training_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 testing_data_dir = os.path.join(data_dir, "intermediate", "testing_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 model_dir = os.path.join(data_dir, "intermediate", "model", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
