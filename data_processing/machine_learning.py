@@ -169,16 +169,17 @@ def arma_model_training_and_saving_pipline():
                                                      str(q)]) + '\n'
 
                                     predict_f.write(ltw )
-                            except ValueError, e:
+                            except ValueError as e:
                                 pass
-                            except np.linalg.linalg.LinAlgError, e:
+                            except np.linalg.linalg.LinAlgError as e:
                                 pass
                             if fit_success:
                                 break
                         if fit_success:
                             break
 if __name__ == "__main__":
-    arma_model_training_and_saving_pipline()
+    # arma_model_training_and_saving_pipline()
+    pass
 
 
 
