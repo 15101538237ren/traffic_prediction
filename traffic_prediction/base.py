@@ -4,7 +4,7 @@ import os, datetime, math, simplejson, decimal, bisect,time, random
 from numpy import unicode
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POINT_TYPE = "accident"
+POINT_TYPE = "violation"
 data_dir = os.path.join(BASE_DIR, "data")
 origin_dir = os.path.join(data_dir, "origin")
 

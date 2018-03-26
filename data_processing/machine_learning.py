@@ -102,6 +102,8 @@ def lstm_model_training_and_saving_pipline():
         for dtc in dirs_to_create:
             if not os.path.exists(dtc):
                 os.makedirs(dtc)
+
+        error_fp = os.path.join(prediction_fp, "error.tsv")
         [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp, testing_dir_fp)
 
         seq_len = base.SEQUENCE_LENGTH_DICT[settings.TIME_PERIODS[day_interval_str]]
@@ -112,16 +114,31 @@ def lstm_model_training_and_saving_pipline():
         model.fit(x_train, y_train, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_split= VALIDATION_RATIO, callbacks=[model_saver])
 
         predicted_y = predict_point_by_point(model, x_test)
+        with open(error_fp, "w") as e_f:
+            for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+                tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
+                predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+                error = []
+                squaredError = []
+                absError = []
+                error_str_pre = day_interval_str + '_seg_' + str(time_segment_i)
+                with open(predict_result_fp, "w") as predict_f:
+                    ltws = []
+                    for tidx in tidx_list:
+                        ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
+                        ltws.append(ltw)
 
-        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
-            tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
-            predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
-            with open(predict_result_fp, "w") as predict_f:
-                ltws = []
-                for tidx in tidx_list:
-                    ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
-                    ltws.append(ltw)
-                predict_f.write('\n'.join(ltws))
+                        val= y_test[tidx] - predicted_y[tidx]
+                        error.append(val)
+                        squaredError.append(val * val)
+                        absError.append(abs(val))
+                    predict_f.write('\n'.join(ltws))
+
+                erw = '\t'.join([error_str_pre,
+                                 str(round(sum(squaredError) / len(squaredError), 4)),  # mse
+                                 str(round(np.sqrt(sum(squaredError) / len(squaredError)), 4)),  # rmse
+                                 str(round(sum(absError) / len(absError)))]) + '\n'  # mae
+                e_f.write(erw)
 
 def arma_model_training_and_saving_pipline():
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
@@ -169,16 +186,16 @@ def arma_model_training_and_saving_pipline():
                                         pdr = temp_predict_results[item]
                                         if pdr != pdr:
                                             pdr = 0.0
+
+                                        val = ts_post[item] - pdr
+                                        error.append(val)
+                                        squaredError.append(val * val)
+                                        absError.append(abs(val))
                                         ltw = '\t'.join([str(rid), dts[item],
                                                          str(round(ts_post[item], 4)),   #真实值
                                                          str(round(pdr, 4)),      #预测值
                                                          str(p),
                                                          str(q)]) + '\n'
-
-                                        error.append(ts_post[item] - pdr)
-                                        squaredError.append(error * error)
-                                        absError.append(abs(error))
-
                                         predict_f.write(ltw )
                                 except ValueError as e:
                                     pass
@@ -199,8 +216,8 @@ def arma_model_training_and_saving_pipline():
 
 
 if __name__ == "__main__":
-    # arma_model_training_and_saving_pipline()
-    pass
+    arma_model_training_and_saving_pipline()
+
 
 
 
