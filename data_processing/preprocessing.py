@@ -3,7 +3,6 @@
 from traffic_prediction import base, helpers
 from traffic_prediction import settings
 import os, json, math, simplejson, datetime, time, pickle
-import urllib.request
 import numpy as np
 frequency_matrix_dict, max_frequency_dict, left_datetimes_arr, geo_points_list, time_segment_list = None, None, None, None, None
 #标记是否是节假日
@@ -135,9 +134,9 @@ def generate_region_point_frequency(time_segment_list_tmp,left_datetimes, right_
         region_point_frequency = []  # 事件发生频率
         for region_point_count in region_point_counts_in_time_segment_and_date_segment:
             freq = region_point_count/day/base.TIME_SEGMENT_HOURS[time_segment_i]
-            one_hot_label_of_freq = base.FREQUENCY_DEGREE_DICT[base.frequency_degree_judge(freq)]
-            region_point_frequency.append(one_hot_label_of_freq)
-            #region_point_frequency.append(freq)
+            # one_hot_label_of_freq = base.FREQUENCY_DEGREE_DICT[base.frequency_degree_judge(freq)]
+            # region_point_frequency.append(one_hot_label_of_freq)
+            region_point_frequency.append(freq)
 
             max_frequency = freq if freq > max_frequency else max_frequency
         region_point_frequency_matrix_in_time_segment.append(region_point_frequency) # list内每一个元素为一个矩阵
@@ -220,9 +219,9 @@ def obtain_frequency_matrix():
             print ("start load pickle file %s" % (base.freq_matrix_pkl_path))
 
             with open(base.freq_matrix_pkl_path, "rb") as pickle_file:
-                frequency_matrix_dict = pickle.load(pickle_file,encoding='bytes')
-                max_frequency_dict = pickle.load(pickle_file,encoding='bytes')
-                left_datetimes_arr = pickle.load(pickle_file,encoding='bytes')
+                frequency_matrix_dict = pickle.load(pickle_file) #,encoding='bytes'
+                max_frequency_dict = pickle.load(pickle_file)#,encoding='bytes')
+                left_datetimes_arr = pickle.load(pickle_file)#,encoding='bytes')
     return frequency_matrix_dict, max_frequency_dict, left_datetimes_arr
 
 def generate_freq_data_pipline():
@@ -342,6 +341,7 @@ if __name__ == "__main__":
 
     generate_freq_data_pipline()
     # generate_train_and_test_data_pipline()
+#  <<<<<<< HEAD
 
     # # dt_start = datetime.datetime.strptime("2016-01-01 00:00:00", base.SECOND_FORMAT)
     # # dt_end = datetime.datetime.strptime("2016-02-01 00:00:00", base.SECOND_FORMAT)
@@ -355,4 +355,6 @@ if __name__ == "__main__":
     #
     # for i in range(6):
     #     print (frequency_matrix_by_time_segment[i])
+# =======
+# >>>>>>> 8d5e776fe503b936f027ccb8432fff2ba4f55a3f
     pass

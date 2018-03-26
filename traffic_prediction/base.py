@@ -4,7 +4,7 @@ import os, datetime, math, simplejson, decimal, bisect,time, random
 from numpy import unicode
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POINT_TYPE = "violation"
+POINT_TYPE = "accident"
 data_dir = os.path.join(BASE_DIR, "data")
 origin_dir = os.path.join(data_dir, "origin")
 
@@ -38,8 +38,8 @@ TIME_SEGMENTS_LABELS = {u'凌晨 0:00-7:00': 0, u'早高峰 7:00-9:00': 1, u'早
 
 FREQUENCY_DEGREE_DICT = {0:[1,0,0,0,0,0], 1:[0,1,0,0,0,0], 2:[0,0,1,0,0,0], 3:[0,0,0,1,0,0], 4:[0,0,0,0,1,0], 5:[0,0,0,0,0,1]}
 
-freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data_new", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
-# freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+# freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data_new", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
+freqency_data_dir = os.path.join(data_dir, "intermediate", "freqency_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 training_data_dir = os.path.join(data_dir, "intermediate", "training_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 testing_data_dir = os.path.join(data_dir, "intermediate", "testing_data", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
 model_dir = os.path.join(data_dir, "intermediate", "model", POINT_TYPE, TIME_SEGMENT_DIR_NAME)
