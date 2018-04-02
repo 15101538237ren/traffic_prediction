@@ -137,7 +137,7 @@ def lstm_model_training_and_saving_pipline():
                 erw = '\t'.join([error_str_pre,
                                  str(round(sum(squaredError) / len(squaredError), 4)),  # mse
                                  str(round(np.sqrt(sum(squaredError) / len(squaredError)), 4)),  # rmse
-                                 str(round(sum(absError) / len(absError)))]) + '\n'  # mae
+                                 str(round(sum(absError) / len(absError),4))]) + '\n'  # mae
                 e_f.write(erw)
 
 def arma_model_training_and_saving_pipline():
@@ -209,7 +209,7 @@ def arma_model_training_and_saving_pipline():
                 erw = '\t'.join([error_str_pre,
                                  str(round( sum(squaredError)/len(squaredError) , 4)),  # mse
                                  str(round(np.sqrt(sum(squaredError) / len(squaredError)), 4)),  # rmse
-                                 str(round( sum(absError) / len(absError)))]) + '\n' #mae
+                                 str(round( sum(absError) / len(absError),4))]) + '\n' #mae
                 e_f.write(erw)
 
 
