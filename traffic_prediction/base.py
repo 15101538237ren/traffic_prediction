@@ -4,7 +4,7 @@ import os, datetime, math, simplejson, decimal, bisect,time, random
 from numpy import unicode
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POINT_TYPE = "violation"
+POINT_TYPE = "accident"
 data_dir = os.path.join(BASE_DIR, "data")
 origin_dir = os.path.join(data_dir, "origin")
 
@@ -26,7 +26,7 @@ TIME_SEGMENT_START_TIME = {0: 0, 1: 7, 2: 9, 3: 12, 4: 14, 5: 20}
 TIME_SEGMENT_START_TIME_DICT = {item: datetime.datetime(2000, 1, 1, TIME_SEGMENT_START_TIME[item], 0, 0, 0).strftime(ONLY_TIME_FORMAT) for item in range(TIME_SEGMENT_LENGTH)} if IS_TIME_SEGMENT else {item: datetime.datetime(2000, 1, 1, item, 0, 0, 0).strftime(ONLY_TIME_FORMAT) for item in range(TIME_SEGMENT_LENGTH)}
 SEGMENT_FILE_PRE = 'seg_'
 MODEL_SELECTION = 'arma'
-SEQUENCE_LENGTH_DICT = {1: 29, 3: 19, 7: 4, 30: 1}
+SEQUENCE_LENGTH_DICT = {1: 19, 3: 19, 7: 19, 30: 19}
 
 DAWN = 0; MORNING_RUSH = 1; MORNING_WORKING = 2; NOON = 3; AFTERNOON = 4; NIGHT = 5
 
@@ -159,7 +159,7 @@ def read_origin_data_into_geo_point_list(input_file_path, sep="\t",line_end = "\
     return geo_points_list, time_segment_list
 
 #给定起始、结束日期时间
-def generate_timelist(start_datetime, end_datetime, time_delta):
+def generate_timelist(start_datetime, end_datetime, time_delta, min_timedelta = datetime.timedelta(days=1)):
     left_datetimes = []
     right_datetimes = []
 
@@ -170,7 +170,7 @@ def generate_timelist(start_datetime, end_datetime, time_delta):
         left_datetimes.append(left_dt)
         right_datetimes.append(right_dt)
 
-        left_dt = right_dt
+        left_dt = left_dt + min_timedelta
     return left_datetimes, right_datetimes
 
 # 输入时间地理点列表, 输出在(dt_start, dt_end)的时间范围内的点的索引(left_index, right_index)
