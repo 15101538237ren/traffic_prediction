@@ -61,9 +61,6 @@ def load_data(training_dir_fp, testing_dir_fp, sep = '\t', line_end = '\n'):
     x_train = train[:, :-1]
     y_train = train[:, -1]
 
-    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
-
     print ('x_train shape', x_train.shape)
     print('y_train shape:', y_train.shape)
     print('x_test shape', x_test.shape)
@@ -158,6 +155,9 @@ def lstm_model_training_and_saving_pipline():
             if not os.path.exists(dtc):
                 os.makedirs(dtc)
         [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp, testing_dir_fp)
+
+        x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+        x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
 
         seq_len = base.SEQUENCE_LENGTH_DICT[settings.TIME_PERIODS[day_interval_str]]
         model = build_lstm_model([1, seq_len, 2 * seq_len, 1])
