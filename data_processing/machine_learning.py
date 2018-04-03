@@ -137,7 +137,7 @@ def lstm_model_training_and_saving_pipline():
                 erw = '\t'.join([error_str_pre,
                                  str(round(sum(squaredError) / len(squaredError), 4)),  # mse
                                  str(round(np.sqrt(sum(squaredError) / len(squaredError)), 4)),  # rmse
-                                 str(round(sum(absError) / len(absError)))]) + '\n'  # mae
+                                 str(round(sum(absError) / len(absError),4))]) + '\n'  # mae
                 e_f.write(erw)
 
 def arma_model_training_and_saving_pipline():
@@ -209,11 +209,39 @@ def arma_model_training_and_saving_pipline():
                 erw = '\t'.join([error_str_pre,
                                  str(round( sum(squaredError)/len(squaredError) , 4)),  # mse
                                  str(round(np.sqrt(sum(squaredError) / len(squaredError)), 4)),  # rmse
-                                 str(round( sum(absError) / len(absError)))]) + '\n' #mae
+                                 str(round( sum(absError) / len(absError),4))]) + '\n' #mae
                 e_f.write(erw)
 
 
+def generate_error_file():
+    for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
+        day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
+        prediction_fp = os.path.join(base.predict_result_dir, "arma", day_interval_str)
+    error_fp = os.path.join(prediction_fp, "error.tsv")
+    with open(error_fp, "w") as e_f:
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+            error = []
+            squaredError = []
+            absError = []
+            error_str_pre = day_interval_str + '_seg_' + str(time_segment_i)
 
+            with open(predict_result_fp, "r") as prdp:
+                lines = predict_result_fp.read().split("\n")
+                for line in lines:
+                    if line != "":
+                        line_arr = line.split("\t")
+                        real_data = line_arr[3]
+                        predict_data = line_arr[4]
+                        val = real_data - predict_data
+                        error.append(val)
+                        squaredError.append(val * val)
+                        absError.append(abs(val))
+            erw = '\t'.join([error_str_pre,
+                                 str(round(sum(squaredError) / len(squaredError), 4)),  # mse
+                                 str(round(np.sqrt(sum(squaredError) / len(squaredError)), 4)),  # rmse
+                                 str(round(sum(absError) / len(absError), 4))]) + '\n'  # mae
+            e_f.write(erw)
 
 if __name__ == "__main__":
     lstm_model_training_and_saving_pipline()
