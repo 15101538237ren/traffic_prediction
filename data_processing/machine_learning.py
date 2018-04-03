@@ -216,6 +216,7 @@ def arma_model_training_and_saving_pipline():
 
 
 if __name__ == "__main__":
+    lstm_model_training_and_saving_pipline()
     arma_model_training_and_saving_pipline()
 
 
