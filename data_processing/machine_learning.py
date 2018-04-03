@@ -2,12 +2,17 @@
 
 from __future__ import print_function
 
-import time, os
+from sklearn.svm import SVR
+import time, os, math
 import warnings
 import numpy as np
 import pandas as pd
-from datetime import datetime
 import matplotlib.pyplot as plt
+from datetime import datetime
+from sklearn import datasets
+from sklearn.cross_validation import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression,Perceptron
 from statsmodels.tsa.stattools import ARMA
 from numpy import newaxis
 from keras.layers.core import Dense, Activation, Dropout
@@ -83,7 +88,6 @@ def build_lstm_model(layers, dropout_rate = 0.2, activation = 'relu', loss = "ms
     model.compile(loss=loss, optimizer=optimizer)
     print("Compilation Time : ", time.time() - start)
     return model
-
 #直接全部预测
 def predict_point_by_point(model, data):
     predicted = model.predict(data)
@@ -91,19 +95,68 @@ def predict_point_by_point(model, data):
     predicted = np.reshape(predicted, (predicted.size,))
     return predicted
 
+def prediction(model_name):
+    for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
+        day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
+        training_dir_fp = os.path.join(base.training_data_dir, day_interval_str)
+        testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str)
+        prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str)
+        dirs_to_create = [model_dir_fp, prediction_fp]
+        for dtc in dirs_to_create:
+            if not os.path.exists(dtc):
+                os.makedirs(dtc)
+        [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp, testing_dir_fp)
+        if model_name =='lstm':
+            model_dir_fp = os.path.join(base.model_dir, day_interval_str)
+            predicted_y = lstm_prediction(day_interval_str,model_dir_fp,x_train,y_train,x_test)
+        elif model_name =='svr':
+            predicted_y = lr_prediction(x_train,y_train,x_test)
+
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
+            predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+            with open(predict_result_fp, "w") as predict_f:
+                ltws = []
+                for tidx in tidx_list:
+                    ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
+                    ltws.append(ltw)
+                predict_f.write('\n'.join(ltws))
+
+def lstm_prediction(day_interval_str,model_dir_fp,x_train,y_train,x_test):
+    seq_len = base.SEQUENCE_LENGTH_DICT[settings.TIME_PERIODS[day_interval_str]]
+    model = build_lstm_model([1, seq_len, 2 * seq_len, 1])
+
+    model_path = os.path.join(model_dir_fp, "lstm_model.h5")
+    model_saver = ModelCheckpoint(filepath=model_path, verbose=1)
+    model.fit(x_train, y_train, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_split=VALIDATION_RATIO,
+              callbacks=[model_saver])
+
+    predicted_y = predict_point_by_point(model, x_test)
+    return predicted_y
+
+def lr_prediction(x_train,y_train,x_test):
+    sc = StandardScaler()
+    sc.fit(x_train)  # 估算每个特征的平均值和标准差
+    sc.mean_  # 查看特征的平均值
+    sc.scale_  # 查看特征的标准差
+    x_train_std = sc.transform(x_train)  # 用同样的参数来标准化测试集，使得测试集和训练集之间有可比性
+    x_test_std = sc.transform(x_test)
+    ppn = Perceptron(n_iter=40, eta0=0.1, random_state=0)
+    ppn.fit(x_train_std, y_train)  # 分类测试集，这将返回一个测试结果的数组
+    predicted_y = ppn.predict(x_test_std)
+    return predicted_y
+
 def lstm_model_training_and_saving_pipline():
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
         training_dir_fp = os.path.join(base.training_data_dir, day_interval_str)
         testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str)
         model_dir_fp = os.path.join(base.model_dir, day_interval_str)
-        prediction_fp = os.path.join(base.predict_result_dir, "lstm", day_interval_str)
+        prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str)
         dirs_to_create = [model_dir_fp, prediction_fp]
         for dtc in dirs_to_create:
             if not os.path.exists(dtc):
                 os.makedirs(dtc)
-
-        error_fp = os.path.join(prediction_fp, "error.tsv")
         [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp, testing_dir_fp)
 
         seq_len = base.SEQUENCE_LENGTH_DICT[settings.TIME_PERIODS[day_interval_str]]
@@ -114,36 +167,57 @@ def lstm_model_training_and_saving_pipline():
         model.fit(x_train, y_train, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_split= VALIDATION_RATIO, callbacks=[model_saver])
 
         predicted_y = predict_point_by_point(model, x_test)
-        with open(error_fp, "w") as e_f:
-            for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
-                tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
-                predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
-                error = []
-                squaredError = []
-                absError = []
-                error_str_pre = day_interval_str + '_seg_' + str(time_segment_i)
-                with open(predict_result_fp, "w") as predict_f:
-                    ltws = []
-                    for tidx in tidx_list:
-                        ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
-                        ltws.append(ltw)
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
+            predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
 
-                        val= y_test[tidx] - predicted_y[tidx]
-                        error.append(val)
-                        squaredError.append(val * val)
-                        absError.append(abs(val))
-                    predict_f.write('\n'.join(ltws))
+            with open(predict_result_fp, "w") as predict_f:
+                ltws = []
+                for tidx in tidx_list:
+                    ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
+                    ltws.append(ltw)
+                predict_f.write('\n'.join(ltws))
 
-                erw = '\t'.join([error_str_pre,
-                                 str(round(sum(squaredError) / len(squaredError), 4)),  # mse
-                                 str(round(np.sqrt(sum(squaredError) / len(squaredError)), 4)),  # rmse
-                                 str(round(sum(absError) / len(absError),4))]) + '\n'  # mae
-                e_f.write(erw)
+def svr_model_training_and_saving_pipline():
+    for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
+        day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
+        training_dir_fp = os.path.join(base.training_data_dir, day_interval_str)
+        testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str)
+        prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str)
+        dirs_to_create = [prediction_fp]
+        for dtc in dirs_to_create:
+            if not os.path.exists(dtc):
+                os.makedirs(dtc)
+        [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp,testing_dir_fp)
+
+        linear_svr = SVR(kernel='linear')
+        linear_svr.fit(x_train, y_train)
+        linear_svr_y_predict = linear_svr.predict(x_test)
+
+        poly_svr = SVR(kernel='poly')
+        poly_svr.fit(x_train, y_train)
+        poly_svr_y_predict = poly_svr.predict(x_test)
+
+        rbf_svr = SVR(kernel='rbf')
+        rbf_svr.fit(x_train, y_train)
+        rbf_svr_y_predict = rbf_svr.predict(x_test)
+
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
+            predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+
+            with open(predict_result_fp, "w") as predict_f:
+                ltws = []
+                for tidx in tidx_list:
+                    ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]),
+                            str(linear_svr_y_predict[tidx]),str(poly_svr_y_predict[tidx]),str(rbf_svr_y_predict[tidx])])
+                    ltws.append(ltw)
+                predict_f.write('\n'.join(ltws))
 
 def arma_model_training_and_saving_pipline():
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
-        prediction_fp = os.path.join(base.predict_result_dir, "arma", day_interval_str)
+        prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str)
         dirs_to_create = [prediction_fp]
         for dtc in dirs_to_create:
             if not os.path.exists(dtc):
@@ -212,40 +286,74 @@ def arma_model_training_and_saving_pipline():
                                  str(round( sum(absError) / len(absError),4))]) + '\n' #mae
                 e_f.write(erw)
 
+def logistic_regression_model_training_and_saving_pipline():
+    for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
+        day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
+        training_dir_fp = os.path.join(base.training_data_dir, day_interval_str)
+        testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str)
+        model_dir_fp = os.path.join(base.model_dir, day_interval_str)
+        prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str)
+        dirs_to_create = [model_dir_fp, prediction_fp]
+        for dtc in dirs_to_create:
+            if not os.path.exists(dtc):
+                os.makedirs(dtc)
+        [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp,
+                                                                                          testing_dir_fp)
+        sc = StandardScaler()
+        sc.fit(x_train)  # 估算每个特征的平均值和标准差
+        sc.mean_  # 查看特征的平均值
+        sc.scale_  # 查看特征的标准差
+        x_train_std = sc.transform(x_train) # 用同样的参数来标准化测试集，使得测试集和训练集之间有可比性
+        x_test_std = sc.transform(x_test)
+        ppn = Perceptron(n_iter=40, eta0=0.1, random_state=0)
+        ppn.fit(x_train_std, y_train) # 分类测试集，这将返回一个测试结果的数组
+        predicted_y = ppn.predict(x_test_std)
+
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
+            predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+            with open(predict_result_fp, "w") as predict_f:
+                ltws = []
+                for tidx in tidx_list:
+                    ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
+                    ltws.append(ltw)
+                predict_f.write('\n'.join(ltws))
 
 def generate_error_file():
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
-        prediction_fp = os.path.join(base.predict_result_dir, "arma", day_interval_str)
-    error_fp = os.path.join(prediction_fp, "error.tsv")
-    with open(error_fp, "w") as e_f:
-        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
-            predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
-            error = []
-            squaredError = []
-            absError = []
-            error_str_pre = day_interval_str + '_seg_' + str(time_segment_i)
+        prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str)
+        error_fp = os.path.join(prediction_fp, "error.tsv")
+        with open(error_fp, "w") as e_f:
+            for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+                predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+                error = []
+                squaredError = []
+                absError = []
+                error_str_pre = day_interval_str + '_seg_' + str(time_segment_i)
 
-            with open(predict_result_fp, "r") as prdp:
-                lines = predict_result_fp.read().split("\n")
-                for line in lines:
-                    if line != "":
-                        line_arr = line.split("\t")
-                        real_data = line_arr[3]
-                        predict_data = line_arr[4]
-                        val = real_data - predict_data
-                        error.append(val)
-                        squaredError.append(val * val)
-                        absError.append(abs(val))
-            erw = '\t'.join([error_str_pre,
-                                 str(round(sum(squaredError) / len(squaredError), 4)),  # mse
-                                 str(round(np.sqrt(sum(squaredError) / len(squaredError)), 4)),  # rmse
-                                 str(round(sum(absError) / len(absError), 4))]) + '\n'  # mae
-            e_f.write(erw)
+                with open(predict_result_fp, "r") as prdp:
+                    lines = prdp.read().split("\n")
+                    for line in lines:
+                        if line != "":
+                            line_arr = line.split("\t")
+                            real_data = float(line_arr[2])
+                            predict_data = float(line_arr[3])
+                            val = real_data - predict_data
+                            error.append(val)
+                            squaredError.append(val * val)
+                            absError.append(abs(val))
+                erw = '\t'.join([error_str_pre,
+                                     str(round(sum(squaredError) / len(squaredError), 4)),  # mse
+                                     str(round(math.sqrt(sum(squaredError) / len(squaredError)), 4)),  # rmse
+                                     str(round(sum(absError) / len(absError), 4))]) + '\n'  # mae
+                e_f.write(erw)
 
 if __name__ == "__main__":
-    arma_model_training_and_saving_pipline()
-
+    # arma_model_training_and_saving_pipline()
+    # generate_error_file()
+    svr_model_training_and_saving_pipline()
+    #logistic_regression_model_training_and_saving_pipline()
 
 
 
