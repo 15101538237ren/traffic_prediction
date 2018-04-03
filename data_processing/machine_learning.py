@@ -301,8 +301,6 @@ def logistic_regression_model_training_and_saving_pipline():
                                                                                           testing_dir_fp)
         sc = StandardScaler()
         sc.fit(x_train)  # 估算每个特征的平均值和标准差
-        sc.mean_  # 查看特征的平均值
-        sc.scale_  # 查看特征的标准差
         x_train_std = sc.transform(x_train) # 用同样的参数来标准化测试集，使得测试集和训练集之间有可比性
         x_test_std = sc.transform(x_test)
         ppn = Perceptron(n_iter=40, eta0=0.1, random_state=0)
@@ -352,7 +350,7 @@ if __name__ == "__main__":
     # arma_model_training_and_saving_pipline()
     # generate_error_file()
     svr_model_training_and_saving_pipline()
-    #logistic_regression_model_training_and_saving_pipline()
+    logistic_regression_model_training_and_saving_pipline()
 
 
 
