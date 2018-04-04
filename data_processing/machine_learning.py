@@ -21,6 +21,7 @@ from keras.layers.recurrent import LSTM
 from keras.models import Sequential
 from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping,TensorBoard
 from traffic_prediction import base, settings
+
 warnings.filterwarnings("ignore")
 
 BATCH_SIZE = 512
@@ -342,9 +343,12 @@ def logistic_regression_model_training_and_saving_pipline():
         sc.fit(x_train)  # 估算每个特征的平均值和标准差
         x_train_std = sc.transform(x_train) # 用同样的参数来标准化测试集，使得测试集和训练集之间有可比性
         x_test_std = sc.transform(x_test)
-        ppn = Perceptron(n_iter=40, eta0=0.1, random_state=0)
-        ppn.fit(x_train_std, y_train) # 分类测试集，这将返回一个测试结果的数组
-        predicted_y = ppn.predict(x_test_std)
+
+        clf = LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None,
+                                 solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
+        clf.fit(x_train_std, y_train)
+        # 分类测试集，这将返回一个测试结果的数组
+        predicted_y = clf.predict(x_test_std)
 
         for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
             tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
