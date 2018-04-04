@@ -192,18 +192,6 @@ def svr_model_training_and_saving_pipline():
 
         [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp,testing_dir_fp)
 
-        linear_svr = SVR(kernel='linear')
-        linear_svr.fit(x_train, y_train)
-        linear_svr_y_predict = linear_svr.predict(x_test)
-
-        poly_svr = SVR(kernel='poly')
-        poly_svr.fit(x_train, y_train)
-        poly_svr_y_predict = poly_svr.predict(x_test)
-
-        rbf_svr = SVR(kernel='rbf')
-        rbf_svr.fit(x_train, y_train)
-        rbf_svr_y_predict = rbf_svr.predict(x_test)
-
         for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
             tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
             predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
