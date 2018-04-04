@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-
+import sys
+sys.path.append("..")
 from sklearn.svm import SVR
 import time, os, math
 import warnings
@@ -188,6 +189,7 @@ def svr_model_training_and_saving_pipline():
         for dtc in dirs_to_create:
             if not os.path.exists(dtc):
                 os.makedirs(dtc)
+
         [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp,testing_dir_fp)
 
         linear_svr = SVR(kernel='linear')
@@ -205,14 +207,63 @@ def svr_model_training_and_saving_pipline():
         for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
             tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
             predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+            testing_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
+            freq_data_dir = os.path.join(base.freqency_data_dir, day_interval_str,base.SEGMENT_FILE_PRE + str(time_segment_i))
+            for rid in range(base.N_LNG * base.N_LAT):
+                print("now " + str(rid))
+                seq_len = base.SEQUENCE_LENGTH_DICT[settings.TIME_PERIODS[day_interval_str]] + 1
+                training_data_seq,reg_train_data, reg_testing_data= [], [], []
+                freq_data_fp = os.path.join(freq_data_dir, str(rid) + '.tsv')
+                freq_data = open(freq_data_fp, 'rb').read()
+                for idx, line_item in enumerate(freq_data.split('\n')):
+                    if idx and line_item != "":
+                        line_item_arr = line_item.split("\t")
+                        dti = datetime.datetime.strptime(line_item_arr[0], base.SECOND_FORMAT)
+                        freq = float(line_item_arr[1])
+                        if settings.TRAINING_DATETIME_SLOT[0] <= dti <= settings.TRAINING_DATETIME_SLOT[1]:
+                            reg_train_data.append(freq)
+                        elif settings.TESTING_DATETIME_SLOT[0] <= dti <= settings.TESTING_DATETIME_SLOT[1]:
+                            reg_testing_data.append([rid, dti, freq])
 
-            with open(predict_result_fp, "w") as predict_f:
-                ltws = []
-                for tidx in tidx_list:
-                    ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]),
-                            str(linear_svr_y_predict[tidx]),str(poly_svr_y_predict[tidx]),str(rbf_svr_y_predict[tidx])])
-                    ltws.append(ltw)
-                predict_f.write('\n'.join(ltws))
+                for index in range(len(reg_train_data) - seq_len + 1):
+                    training_data_seq.append(reg_train_data[index: index + seq_len])
+
+                with open(testing_data_fp, 'r') as testing_f:
+                    for idx, item in enumerate(testing_f.read().split('\n')):
+                        if idx and item != "" and item_arr[0]==rid:
+                            item_arr = item.split('\t')
+                            time_segs.append(time_segment_i)
+                            region_ids.append(item_arr[0])
+                            date_times.append(item_arr[1])
+                            x_test.append([float(it) for it in item_arr[2: -1]])
+                            y_test.append(float(item_arr[-1]))
+
+                np.random.shuffle(training_data_seq)
+                x_train = training_data_seq[:, :-1]
+                y_train = training_data_seq[:, -1]
+
+                x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+                x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
+
+                linear_svr = SVR(kernel='linear')
+                linear_svr.fit(x_train, y_train)
+                linear_svr_y_predict = linear_svr.predict(x_test)
+
+                poly_svr = SVR(kernel='poly')
+                poly_svr.fit(x_train, y_train)
+                poly_svr_y_predict = poly_svr.predict(x_test)
+
+                rbf_svr = SVR(kernel='rbf')
+                rbf_svr.fit(x_train, y_train)
+                rbf_svr_y_predict = rbf_svr.predict(x_test)
+
+                with open(predict_result_fp, "w") as predict_f:
+                    ltws = []
+                    for tidx in tidx_list:
+                        ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]),
+                                str(linear_svr_y_predict[tidx]),str(poly_svr_y_predict[tidx]),str(rbf_svr_y_predict[tidx])])
+                        ltws.append(ltw)
+                    predict_f.write('\n'.join(ltws))
 
 def arma_model_training_and_saving_pipline():
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
@@ -301,8 +352,6 @@ def logistic_regression_model_training_and_saving_pipline():
                                                                                           testing_dir_fp)
         sc = StandardScaler()
         sc.fit(x_train)  # 估算每个特征的平均值和标准差
-        sc.mean_  # 查看特征的平均值
-        sc.scale_  # 查看特征的标准差
         x_train_std = sc.transform(x_train) # 用同样的参数来标准化测试集，使得测试集和训练集之间有可比性
         x_test_std = sc.transform(x_test)
         ppn = Perceptron(n_iter=40, eta0=0.1, random_state=0)
@@ -331,7 +380,6 @@ def generate_error_file():
                 squaredError = []
                 absError = []
                 error_str_pre = day_interval_str + '_seg_' + str(time_segment_i)
-
                 with open(predict_result_fp, "r") as prdp:
                     lines = prdp.read().split("\n")
                     for line in lines:
@@ -353,7 +401,7 @@ if __name__ == "__main__":
     # arma_model_training_and_saving_pipline()
     # generate_error_file()
     svr_model_training_and_saving_pipline()
-    #logistic_regression_model_training_and_saving_pipline()
+    logistic_regression_model_training_and_saving_pipline()
 
 
 
