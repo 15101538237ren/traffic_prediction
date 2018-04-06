@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-
+import sys
+sys.path.append("..")
 from sklearn.svm import SVR
 import time, os, math
 import warnings
@@ -9,17 +10,19 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
-from sklearn import datasets
-from sklearn.cross_validation import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression,Perceptron
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from statsmodels.tsa.stattools import ARMA
 from numpy import newaxis
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
 from keras.models import Sequential
-from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping,TensorBoard
+from keras.callbacks import ModelCheckpoint
 from traffic_prediction import base, settings
+
 warnings.filterwarnings("ignore")
 
 BATCH_SIZE = 512
@@ -92,57 +95,21 @@ def predict_point_by_point(model, data):
     predicted = np.reshape(predicted, (predicted.size,))
     return predicted
 
-def prediction(model_name):
-    for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
-        day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
-        training_dir_fp = os.path.join(base.training_data_dir, day_interval_str)
-        testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str)
-        prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str)
-        dirs_to_create = [model_dir_fp, prediction_fp]
-        for dtc in dirs_to_create:
-            if not os.path.exists(dtc):
-                os.makedirs(dtc)
-        [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp, testing_dir_fp)
-        if model_name =='lstm':
-            model_dir_fp = os.path.join(base.model_dir, day_interval_str)
-            predicted_y = lstm_prediction(day_interval_str,model_dir_fp,x_train,y_train,x_test)
-        elif model_name =='svr':
-            predicted_y = lr_prediction(x_train,y_train,x_test)
+def baseline_model_pipline():
+    lr = LinearRegression()
+    lasso = Lasso(alpha = 0.1)
+    ridge = Ridge(alpha=.5)
+    svr = SVR(kernel='linear')
+    dtr = DecisionTreeRegressor()
+    knr = KNeighborsRegressor
+    rfr = RandomForestRegressor(n_estimators=20)
+    abr = AdaBoostRegressor(n_estimators=50)
+    gbr = GradientBoostingRegressor(n_estimators=100)
+    classifiers = [lr, lasso, ridge,  svr, dtr, knr, rfr, abr, gbr]
+    classifier_names = ['lr', 'lasso', 'ridge', 'svr', 'dtr', 'knr', 'rfr', 'abr', 'gbr']
 
-        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
-            tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
-            predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
-            with open(predict_result_fp, "w") as predict_f:
-                ltws = []
-                for tidx in tidx_list:
-                    ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
-                    ltws.append(ltw)
-                predict_f.write('\n'.join(ltws))
-
-def lstm_prediction(day_interval_str,model_dir_fp,x_train,y_train,x_test):
-    seq_len = base.SEQUENCE_LENGTH_DICT[settings.TIME_PERIODS[day_interval_str]]
-    model = build_lstm_model([1, seq_len, 2 * seq_len, 1])
-
-    model_path = os.path.join(model_dir_fp, "lstm_model.h5")
-    model_saver = ModelCheckpoint(filepath=model_path, verbose=1)
-    model.fit(x_train, y_train, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_split=VALIDATION_RATIO,
-              callbacks=[model_saver])
-
-    predicted_y = predict_point_by_point(model, x_test)
-    return predicted_y
-
-def lr_prediction(x_train,y_train,x_test):
-    sc = StandardScaler()
-    sc.fit(x_train)  # 估算每个特征的平均值和标准差
-    sc.mean_  # 查看特征的平均值
-    sc.scale_  # 查看特征的标准差
-    x_train_std = sc.transform(x_train)  # 用同样的参数来标准化测试集，使得测试集和训练集之间有可比性
-    x_test_std = sc.transform(x_test)
-    ppn = Perceptron(n_iter=40, eta0=0.1, random_state=0)
-    ppn.fit(x_train_std, y_train)  # 分类测试集，这将返回一个测试结果的数组
-    predicted_y = ppn.predict(x_test_std)
-    return predicted_y
-
+    for midx, item in enumerate(classifiers):
+        baseline_model_training_and_saving_pipline(classifier_names[midx], item)
 def lstm_model_training_and_saving_pipline():
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
@@ -178,42 +145,65 @@ def lstm_model_training_and_saving_pipline():
                     ltws.append(ltw)
                 predict_f.write('\n'.join(ltws))
 
-def svr_model_training_and_saving_pipline():
+def baseline_model_training_and_saving_pipline(model_name, classifier):
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
-        training_dir_fp = os.path.join(base.training_data_dir, day_interval_str)
-        testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str)
-        prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str)
+        prediction_fp = os.path.join(base.predict_result_dir, model_name, day_interval_str)
         dirs_to_create = [prediction_fp]
         for dtc in dirs_to_create:
             if not os.path.exists(dtc):
                 os.makedirs(dtc)
-        [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp,testing_dir_fp)
-
-        linear_svr = SVR(kernel='linear')
-        linear_svr.fit(x_train, y_train)
-        linear_svr_y_predict = linear_svr.predict(x_test)
-        print('finish linear svr of ' + str(day_interval_str))
-
-        poly_svr = SVR(kernel='poly')
-        poly_svr.fit(x_train, y_train)
-        poly_svr_y_predict = poly_svr.predict(x_test)
-        print('finish poly svr of ' + str(day_interval_str))
-
-        rbf_svr = SVR(kernel='rbf')
-        rbf_svr.fit(x_train, y_train)
-        rbf_svr_y_predict = rbf_svr.predict(x_test)
-        print('finish rbf svr of ' + str(day_interval_str))
-
+        region_ids, date_times, y_origin, y_predicted= [], [], [], []
         for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
-            tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
+            print(day_interval_str + ' time_segment ' + str(time_segment_i))
+            freq_data_dir = os.path.join(base.freqency_data_dir, day_interval_str, base.SEGMENT_FILE_PRE + str(time_segment_i))
             predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+            for rid in range(base.N_LNG * base.N_LAT):
+                seq_len = base.SEQUENCE_LENGTH_DICT[settings.TIME_PERIODS[day_interval_str]] + 1
+                training_data_seq, testing_data_seq, reg_train_data, reg_testing_data= [], [], [], []
 
+                freq_data_fp = os.path.join(freq_data_dir, str(rid) + '.tsv')
+                freq_data = open(freq_data_fp, 'rb').read()
+
+                for idx, line_item in enumerate(freq_data.split('\n')):
+                    if idx and line_item != "":
+                        line_item_arr = line_item.split("\t")
+                        dti = datetime.strptime(line_item_arr[0], base.SECOND_FORMAT)
+                        freq = float(line_item_arr[1])
+                        if settings.TRAINING_DATETIME_SLOT[0] <= dti <= settings.TRAINING_DATETIME_SLOT[1]:
+                            reg_train_data.append(freq)
+                        elif settings.TESTING_DATETIME_SLOT[0] <= dti <= settings.TESTING_DATETIME_SLOT[1]:
+                            reg_testing_data.append([dti, freq])
+
+                for index in range(len(reg_train_data) - seq_len + 1):
+                    training_data_seq.append(reg_train_data[index: index + seq_len])
+
+                for index in range(len(reg_testing_data) - seq_len + 1):
+                    testing_data_seq.append([item[1] for item in reg_testing_data[index: index + seq_len]])
+                    date_times.append(reg_testing_data[index + seq_len - 1][0].strftime(base.SECOND_FORMAT))
+                    region_ids.append(str(rid))
+                training_data_seq = np.array(training_data_seq)
+                testing_data_seq = np.array(testing_data_seq)
+
+                np.random.shuffle(training_data_seq)
+                x_train = training_data_seq[:, :-1]
+                y_train = training_data_seq[:, -1]
+
+                np.random.shuffle(testing_data_seq)
+                x_test = testing_data_seq[:, :-1]
+                y_test = testing_data_seq[:, -1]
+
+                classifier.fit(x_train, y_train)
+                predicted_y = classifier.predict(x_test)
+
+                for iidx, item in enumerate(y_test):
+                    y_origin.append(item)
+                    y_predicted.append(predicted_y[iidx])
             with open(predict_result_fp, "w") as predict_f:
                 ltws = []
-                for tidx in tidx_list:
-                    ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]),
-                            str(linear_svr_y_predict[tidx]),str(poly_svr_y_predict[tidx]),str(rbf_svr_y_predict[tidx])])
+                for tidx, dt_i in enumerate(date_times):
+                    ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_origin[tidx]),
+                            str(y_predicted[tidx])])
                     ltws.append(ltw)
                 predict_f.write('\n'.join(ltws))
 
@@ -306,9 +296,12 @@ def logistic_regression_model_training_and_saving_pipline():
         sc.fit(x_train)  # 估算每个特征的平均值和标准差
         x_train_std = sc.transform(x_train) # 用同样的参数来标准化测试集，使得测试集和训练集之间有可比性
         x_test_std = sc.transform(x_test)
-        ppn = Perceptron(n_iter=40, eta0=0.1, random_state=0)
-        ppn.fit(x_train_std, y_train) # 分类测试集，这将返回一个测试结果的数组
-        predicted_y = ppn.predict(x_test_std)
+
+        clf = LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None,
+                                 solver='liblinear', max_iter=100, multi_class='ovr', verbose=0, warm_start=False, n_jobs=1)
+        clf.fit(x_train_std, y_train)
+        # 分类测试集，这将返回一个测试结果的数组
+        predicted_y = clf.predict(x_test_std)
 
         for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
             tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
@@ -352,8 +345,8 @@ def generate_error_file():
 if __name__ == "__main__":
     # arma_model_training_and_saving_pipline()
     # generate_error_file()
-    # svr_model_training_and_saving_pipline()
-    logistic_regression_model_training_and_saving_pipline()
+    baseline_model_pipline()
+    # logistic_regression_model_training_and_saving_pipline()
 
 
 
