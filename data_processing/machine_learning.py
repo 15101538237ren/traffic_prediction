@@ -199,7 +199,7 @@ def svr_model_training_and_saving_pipline():
         poly_svr.fit(x_train, y_train)
         poly_svr_y_predict = poly_svr.predict(x_test)
         print('finish poly svr of ' + str(day_interval_str))
-        
+
         rbf_svr = SVR(kernel='rbf')
         rbf_svr.fit(x_train, y_train)
         rbf_svr_y_predict = rbf_svr.predict(x_test)
@@ -352,7 +352,7 @@ def generate_error_file():
 if __name__ == "__main__":
     # arma_model_training_and_saving_pipline()
     # generate_error_file()
-    svr_model_training_and_saving_pipline()
+    # svr_model_training_and_saving_pipline()
     logistic_regression_model_training_and_saving_pipline()
 
 
