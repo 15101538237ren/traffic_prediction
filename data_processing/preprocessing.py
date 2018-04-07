@@ -340,6 +340,6 @@ def load_prediction_result(int_time_period, time_segment_i):
 if __name__ == "__main__":
     # generate_freq_data_pipline()
     generate_train_and_test_data_pipline()
-    machine_learning.baseline_model_pipline()
-    machine_learning.lstm_model_training_and_saving_pipline()
-    machine_learning.arma_model_training_and_saving_pipline()
+    # machine_learning.baseline_model_pipline()
+    # machine_learning.lstm_model_training_and_saving_pipline()
+    # machine_learning.arma_model_training_and_saving_pipline()
