@@ -4,6 +4,7 @@ from traffic_prediction import base, helpers
 from traffic_prediction import settings
 import os, json, math, simplejson, datetime, time, pickle
 import numpy as np
+import machine_learning
 frequency_matrix_dict, max_frequency_dict, left_datetimes_arr, geo_points_list, time_segment_list = None, None, None, None, None
 #标记是否是节假日
 def label_holiday(geo_points_list):
@@ -281,17 +282,20 @@ def generate_train_and_test_data_pipline():
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
         for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
             freqency_data_dir = os.path.join(base.freqency_data_dir, day_interval_str, base.SEGMENT_FILE_PRE + str(time_segment_i))
-            training_dir_fp = os.path.join(base.training_data_dir, day_interval_str)
-            testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str)
+            for seq_length in base.SEQUENCE_LENGTHS:
+                seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_length)
+                print 'generating train and test for %s %s %s' % (day_interval_str, time_segment_i, seq_dir_name)
+                training_dir_fp = os.path.join(base.training_data_dir, day_interval_str, seq_dir_name)
+                testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str, seq_dir_name)
 
-            dirs_to_create = [training_dir_fp, testing_dir_fp]
-            for dtc in dirs_to_create:
-                if not os.path.exists(dtc):
-                    os.makedirs(dtc)
+                dirs_to_create = [training_dir_fp, testing_dir_fp]
+                for dtc in dirs_to_create:
+                    if not os.path.exists(dtc):
+                        os.makedirs(dtc)
 
-            training_data_fp = os.path.join(training_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
-            testing_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
-            generate_train_and_test_data(freqency_data_dir, training_data_fp, testing_data_fp, base.SEQUENCE_LENGTH_DICT[settings.TIME_PERIODS[day_interval_str]],
+                training_data_fp = os.path.join(training_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
+                testing_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
+                generate_train_and_test_data(freqency_data_dir, training_data_fp, testing_data_fp, seq_length,
                                          settings.TRAINING_DATETIME_SLOT, settings.TESTING_DATETIME_SLOT)
 
 def load_prediction_result(int_time_period, time_segment_i):
@@ -334,6 +338,8 @@ def load_prediction_result(int_time_period, time_segment_i):
     return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, datetime_str_list, real_frequency, predicted_frequency
 
 if __name__ == "__main__":
-    generate_freq_data_pipline()
+    # generate_freq_data_pipline()
     generate_train_and_test_data_pipline()
-    pass
+    machine_learning.baseline_model_pipline()
+    machine_learning.lstm_model_training_and_saving_pipline()
+    machine_learning.arma_model_training_and_saving_pipline()
