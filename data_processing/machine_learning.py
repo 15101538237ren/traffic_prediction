@@ -219,13 +219,14 @@ def svr_model_training_and_saving_pipline():
 
                 with open(testing_data_fp, 'r') as testing_f:
                     for idx, item in enumerate(testing_f.read().split('\n')):
-                        if idx and item != "" and item_arr[0]==rid:
+                        if idx and item != "" :
                             item_arr = item.split('\t')
-                            time_segs.append(time_segment_i)
-                            region_ids.append(item_arr[0])
-                            date_times.append(item_arr[1])
-                            x_test.append([float(it) for it in item_arr[2: -1]])
-                            y_test.append(float(item_arr[-1]))
+                            if item_arr[0]==rid:
+                                time_segs.append(time_segment_i)
+                                region_ids.append(item_arr[0])
+                                date_times.append(item_arr[1])
+                                x_test.append([float(it) for it in item_arr[2: -1]])
+                                y_test.append(float(item_arr[-1]))
 
                 np.random.shuffle(training_data_seq)
                 x_train = training_data_seq[:, :-1]
