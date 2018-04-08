@@ -195,8 +195,8 @@ def baseline_model_pipline():
     rfr = RandomForestRegressor(n_estimators=20)
     abr = AdaBoostRegressor(n_estimators=50)
     gbr = GradientBoostingRegressor(n_estimators=100)
-    classifiers = [lr, lasso, ridge,  svr, dtr, rfr, abr, gbr] #
-    classifier_names = ['lr', 'lasso', 'ridge', 'svr', 'dtr', 'rfr', 'abr', 'gbr'] #
+    classifiers = [svr] #lr, lasso, ridge,  svr, dtr, rfr, abr, gbr
+    classifier_names = ['svr'] #'lr', 'lasso', 'ridge',, 'dtr', 'rfr', 'abr', 'gbr'
 
     for midx, item in enumerate(classifiers):
         print('model ' + classifier_names[midx])
@@ -212,7 +212,7 @@ def lstm_model_training_and_saving_pipline():
             training_dir_fp = os.path.join(base.training_data_dir, day_interval_str, seq_dir_name)
             testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str, seq_dir_name)
             model_dir_fp = os.path.join(base.model_dir, day_interval_str, seq_dir_name)
-            prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str, seq_dir_name)
+            prediction_fp = os.path.join(base.predict_result_dir, 'lstm', day_interval_str, seq_dir_name)
             dirs_to_create = [model_dir_fp, prediction_fp]
             for dtc in dirs_to_create:
                 if not os.path.exists(dtc):
@@ -245,7 +245,7 @@ def arma_model_training_and_saving_pipline():
         for seq_length in base.SEQUENCE_LENGTHS:
             print('model arma ' + day_interval_str + ' seq len ' + str(seq_length))
             seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_length)
-            prediction_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str, seq_dir_name)
+            prediction_fp = os.path.join(base.predict_result_dir, 'arma', day_interval_str, seq_dir_name)
             dirs_to_create = [prediction_fp]
             for dtc in dirs_to_create:
                 if not os.path.exists(dtc):
