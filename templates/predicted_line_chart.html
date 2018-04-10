@@ -77,6 +77,30 @@
             </select>
        </div>
         <div class="form-group">
+            <label for="classifier_name" class="control-label"><small>模型:</small></label>
+            <select id="classifier_name" class="form-control input-sm" name="classifier_name" style="width:70px;">
+                  {% for v in classifier_names %}
+                      {% ifequal forloop.counter0 0 %}
+                          <option value="{{ v }}" selected="selected">{{ v }}</option>
+                      {% else %}
+                           <option value="{{ v }}">{{ v }}</option>
+                      {% endifequal %}
+                  {% endfor %}
+            </select>
+       </div>
+        <div class="form-group">
+            <label for="seq_len" class="control-label"><small>序列长度:</small></label>
+            <select id="seq_len" class="form-control input-sm" name="seq_len" style="width:70px;">
+                  {% for v in seq_lens %}
+                      {% ifequal forloop.counter0 0 %}
+                          <option value="{{ v }}" selected="selected">{{ v }}</option>
+                      {% else %}
+                           <option value="{{ v }}">{{ v }}</option>
+                      {% endifequal %}
+                  {% endfor %}
+            </select>
+       </div>
+        <div class="form-group">
                 <input onclick="submit_form()" class="btn btn-primary btn-sm"  style="width: 80px;" value="查询"/>
                 {% csrf_token %}
         </div>

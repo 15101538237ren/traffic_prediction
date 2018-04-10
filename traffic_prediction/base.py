@@ -18,15 +18,16 @@ SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
 IS_TIME_SEGMENT = True
 
+classifier_names = ['lstm', 'arma', 'lr', 'lasso', 'ridge', 'svr', 'dtr', 'rfr', 'abr', 'gbr']
+
 TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
 TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24
 TIME_SEGMENT_START_TIME = {0: 0, 1: 7, 2: 9, 3: 12, 4: 14, 5: 20}
 TIME_SEGMENT_START_TIME_DICT = {item: datetime.datetime(2000, 1, 1, TIME_SEGMENT_START_TIME[item], 0, 0, 0).strftime(ONLY_TIME_FORMAT) for item in range(TIME_SEGMENT_LENGTH)} if IS_TIME_SEGMENT else {item: datetime.datetime(2000, 1, 1, item, 0, 0, 0).strftime(ONLY_TIME_FORMAT) for item in range(TIME_SEGMENT_LENGTH)}
 SEGMENT_FILE_PRE = 'seg_'
 SEQ_LEN_FILE_PRE = 'seq_'
-MODEL_SELECTION = 'svr'
 SEQUENCE_LENGTH_DICT = {1: 19, 3: 19, 7: 19, 30: 19}
-SEQUENCE_LENGTHS = [9, 49, 99]
+SEQUENCE_LENGTHS = [9, 19, 49, 99]
 
 DAWN = 0; MORNING_RUSH = 1; MORNING_WORKING = 2; NOON = 3; AFTERNOON = 4; NIGHT = 5
 

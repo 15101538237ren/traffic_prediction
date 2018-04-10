@@ -195,8 +195,8 @@ def baseline_model_pipline():
     rfr = RandomForestRegressor(n_estimators=20)
     abr = AdaBoostRegressor(n_estimators=50)
     gbr = GradientBoostingRegressor(n_estimators=100)
-    classifiers = [svr] #lr, lasso, ridge,  svr, dtr, rfr, abr, gbr
-    classifier_names = ['svr'] #'lr', 'lasso', 'ridge',, 'dtr', 'rfr', 'abr', 'gbr'
+    classifiers = [lr, lasso, ridge,  svr, dtr, rfr, abr, gbr] #
+    classifier_names = ['lr', 'lasso', 'ridge', 'svr', 'dtr', 'rfr', 'abr', 'gbr'] #
 
     for midx, item in enumerate(classifiers):
         print('model ' + classifier_names[midx])
@@ -299,7 +299,7 @@ def arma_model_training_and_saving_pipline():
                                 break
 
 if __name__ == "__main__":
-    pass
+    baseline_model_pipline()
 
 
 

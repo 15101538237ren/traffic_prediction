@@ -298,7 +298,8 @@ def generate_train_and_test_data_pipline():
                 generate_train_and_test_data(freqency_data_dir, training_data_fp, testing_data_fp, seq_length,
                                          settings.TRAINING_DATETIME_SLOT, settings.TESTING_DATETIME_SLOT)
 
-def load_prediction_result(int_time_period, time_segment_i):
+def load_prediction_result(int_time_period, time_segment_i, classifier_name, seq_len):
+    seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_len)
     datetime_dict = {}
     datetime_list, datetime_str_list = [], []
     frequency_matrix_dict_real, frequency_matrix_dict_predicted = {}, {}
@@ -307,7 +308,7 @@ def load_prediction_result(int_time_period, time_segment_i):
 
     max_frequency = -999999
     day_interval_str = settings.TIME_PERIODS_INT_TO_STR[int_time_period]
-    predict_result_fp = os.path.join(base.predict_result_dir, base.MODEL_SELECTION, day_interval_str, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+    predict_result_fp = os.path.join(base.predict_result_dir, classifier_name, day_interval_str, seq_dir_name, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
 
     with open(predict_result_fp, "r") as predict_result_f:
         lines = predict_result_f.read().split("\n")
@@ -338,8 +339,9 @@ def load_prediction_result(int_time_period, time_segment_i):
     return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, datetime_str_list, real_frequency, predicted_frequency
 
 if __name__ == "__main__":
+    pass
     # generate_freq_data_pipline()
     # generate_train_and_test_data_pipline()
-    machine_learning.baseline_model_pipline()
+    # machine_learning.baseline_model_pipline()
     # machine_learning.lstm_model_training_and_saving_pipline()
     # machine_learning.arma_model_training_and_saving_pipline()
