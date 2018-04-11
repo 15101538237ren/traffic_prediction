@@ -119,7 +119,7 @@ MINUTES_INTERVAL = timedelta(minutes=30)
 TIME_PERIODS = {'1_days': 1, '30_days': 30, '3_days': 3, '7_days': 7} #
 TIME_PERIODS_TEST_DATES = ['2016-01-01', '2017-04-01', '2017-08-20']
 TIME_PERIODS_INT_TO_STR = {v: k for k, v in TIME_PERIODS.items()}
-
+DAYS_INTERVALS_LABEL_SEQENCES = ['1_days', '3_days', '7_days', '30_days']
 DAYS_INTERVALS, DAYS_INTERVALS_LABEL = [], []
 
 for k, v in TIME_PERIODS.items():

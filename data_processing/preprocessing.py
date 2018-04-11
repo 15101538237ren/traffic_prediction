@@ -338,10 +338,43 @@ def load_prediction_result(int_time_period, time_segment_i, classifier_name, seq
     del datetime_dict, frequency_matrix_dict_real, frequency_matrix_dict_predicted
     return datetime_list, frequency_matrix_real, frequency_matrix_predicted, max_frequency, datetime_str_list, real_frequency, predicted_frequency
 
+def generate_tsv(tsv_fp, colnames, rownames, data, sep='\t', line_end = '\n'):
+    with open(tsv_fp, 'w') as tsv_file:
+        rows = []
+        row = [' ']
+        row.extend(colnames)
+        rows.append(row)
+
+        for didx, d_item in enumerate(data):
+            row = [rownames[didx]]
+            for item in d_item:
+                row.append(str(item))
+            rows.append(row)
+        for row in rows:
+            ltw = sep.join(row) + line_end
+            tsv_file.write(ltw)
+def generate_prediction_result_table_of_tsv(model_name):
+    row_names = []
+    col_names = [str(item) for item in base.SEQUENCE_LENGTHS]
+    performance_data = []
+    for didx, day_interval_str in enumerate(settings.DAYS_INTERVALS_LABEL_SEQENCES):
+        row_names.append(day_interval_str)
+        performance_data.append([])
+        for seq_length in base.SEQUENCE_LENGTHS:
+            seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_length)
+            prediction_data_fp = os.path.join(base.predict_result_dir,  model_name, day_interval_str, seq_dir_name, base.ERROR_FILE_NAME)
+            rmses = base.read_tab_seperated_file_and_get_target_column(target_col_index=2, input_file_path=prediction_data_fp)
+            mean_rmse = np.mean(np.array([float(rmse) for rmse in rmses]))
+            performance_data[didx].append(round(float(mean_rmse), 3))
+
+    prediction_result_table_fp = os.path.join(base.predict_result_dir,  model_name, base.PREDICTION_TABLE_FILE_NAME)
+    generate_tsv(prediction_result_table_fp, col_names, row_names, performance_data)
+    print('performance table of ' + model_name + 'generated!')
+
 if __name__ == "__main__":
-    pass
+    # generate_prediction_result_table_of_tsv('lstm')
     # generate_freq_data_pipline()
-    # generate_train_and_test_data_pipline()
+    generate_train_and_test_data_pipline()
     # machine_learning.baseline_model_pipline()
-    # machine_learning.lstm_model_training_and_saving_pipline()
+    machine_learning.lstm_model_training_and_saving_pipline()
     # machine_learning.arma_model_training_and_saving_pipline()

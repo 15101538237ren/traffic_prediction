@@ -161,7 +161,7 @@ def generate_error_file(model_name):
         for seq_len in base.SEQUENCE_LENGTHS:
             seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_len)
             prediction_fp = os.path.join(base.predict_result_dir, model_name, day_interval_str, seq_dir_name)
-            error_fp = os.path.join(prediction_fp, "error.tsv")
+            error_fp = os.path.join(prediction_fp, base.ERROR_FILE_NAME)
             with open(error_fp, "w") as e_f:
                 for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
                     predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
@@ -204,6 +204,45 @@ def baseline_model_pipline():
         generate_error_file(classifier_names[midx])
 
 def lstm_model_training_and_saving_pipline():
+    for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
+        day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
+        for seq_length in base.SEQUENCE_LENGTHS:
+            print('model lstm ' + day_interval_str + ' seq len ' + str(seq_length))
+            seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_length)
+            training_dir_fp = os.path.join(base.training_data_dir, day_interval_str, seq_dir_name)
+            testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str, seq_dir_name)
+            model_dir_fp = os.path.join(base.model_dir, day_interval_str, seq_dir_name)
+            prediction_fp = os.path.join(base.predict_result_dir, 'lstm', day_interval_str, seq_dir_name)
+            dirs_to_create = [model_dir_fp, prediction_fp]
+            for dtc in dirs_to_create:
+                if not os.path.exists(dtc):
+                    os.makedirs(dtc)
+            [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp, testing_dir_fp)
+
+            x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+            x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
+            model = build_lstm_model([1, seq_length, 2 * seq_length, 1])
+
+            model_path = os.path.join(model_dir_fp, "lstm_model.h5")
+            model_saver = ModelCheckpoint(filepath=model_path, verbose=1)
+            model.fit(x_train, y_train, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_split= VALIDATION_RATIO, callbacks=[model_saver])
+
+            predicted_y = predict_point_by_point(model, x_test)
+            for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+                tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
+                predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+
+                with open(predict_result_fp, "w") as predict_f:
+                    ltws = []
+                    for tidx in tidx_list:
+                        ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
+                        ltws.append(ltw)
+                    predict_f.write('\n'.join(ltws))
+
+
+def lstm_model_param_trying_pipline():
+    number_of_lstm_layers = [1, 2, 4]
+    number_of_neurons_of_first_lstm = []
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
         for seq_length in base.SEQUENCE_LENGTHS:

@@ -26,8 +26,10 @@ TIME_SEGMENT_START_TIME = {0: 0, 1: 7, 2: 9, 3: 12, 4: 14, 5: 20}
 TIME_SEGMENT_START_TIME_DICT = {item: datetime.datetime(2000, 1, 1, TIME_SEGMENT_START_TIME[item], 0, 0, 0).strftime(ONLY_TIME_FORMAT) for item in range(TIME_SEGMENT_LENGTH)} if IS_TIME_SEGMENT else {item: datetime.datetime(2000, 1, 1, item, 0, 0, 0).strftime(ONLY_TIME_FORMAT) for item in range(TIME_SEGMENT_LENGTH)}
 SEGMENT_FILE_PRE = 'seg_'
 SEQ_LEN_FILE_PRE = 'seq_'
+ERROR_FILE_NAME = 'error.tsv'
+PREDICTION_TABLE_FILE_NAME = 'performance_of_rmse.tsv'
 SEQUENCE_LENGTH_DICT = {1: 19, 3: 19, 7: 19, 30: 19}
-SEQUENCE_LENGTHS = [9, 19, 49, 99]
+SEQUENCE_LENGTHS = [19]#9, 19, 49, 99
 
 DAWN = 0; MORNING_RUSH = 1; MORNING_WORKING = 2; NOON = 3; AFTERNOON = 4; NIGHT = 5
 
