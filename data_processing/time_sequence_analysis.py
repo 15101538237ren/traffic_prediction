@@ -5,7 +5,8 @@ from traffic_prediction import settings
 from statsmodels.tsa.stattools import adfuller, acf, ARMA
 import statsmodels.api as sm
 import os, json, math, simplejson, datetime, time, pickle
-import urllib.request
+#import urllib.request
+import requests
 import numpy as np
 import pandas as pd
 import matplotlib.pylab as plt
@@ -79,9 +80,9 @@ def residual_test(residual,lags =31):
 
 # 用ARMA模型预测时间序列, p, q 为模型参数
 def time_seq_prediction_by_arma(ts, time_str, p=1 , q=1):
-    # draw_time_series(ts)
-    # draw_acf_pacf(ts)
-    # unit_root_test(ts)
+    draw_time_series(ts)
+    draw_acf_pacf(ts)
+    unit_root_test(ts)
     ts_part = ts['2016-01-01' + time_str: '2017-03-02' + time_str]
     arma_moddel = ARMA(ts_part, (p, q)).fit()
     # print(arma_moddel.aic, arma_moddel.bic, arma_moddel.hqic)
@@ -96,7 +97,7 @@ def time_seq_prediction_by_arma(ts, time_str, p=1 , q=1):
 if __name__ == "__main__":
     day_interval = '3_days'
     time_segment_i = 2
-    region_id = 89
+    region_id = 12
     input_dir_fp = os.path.join(base.freqency_data_dir, day_interval, 'seg_' + str(time_segment_i))
     time_series_fp = os.path.join(input_dir_fp, str(region_id) + '.tsv')
 
@@ -105,4 +106,4 @@ if __name__ == "__main__":
     ts = df['avg_count']  # 生成pd.Series对象
     time_str = ' 09:00:00'
     date_times = ts.index.values
-    time_seq_prediction_by_arma(ts, time_str, p=2, q=3)
+    time_seq_prediction_by_arma(ts, time_str, p=4, q=5)

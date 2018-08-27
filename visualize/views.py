@@ -110,6 +110,17 @@ def predict_result_comparision(request):
 
         return JsonResponse(response_dict)
 
+def params(request):
+    classifier_names = base.classifier_names
+    lstm_layers = [4, 3, 2, 1]
+    fc_nn_layers = [4, 3, 2, 1]
+    n_neurons = [1000, 500, 200, 100]
+    time_period = settings.TIME_PERIODS
+    time_segment = base.TIME_SEGMENTS_LABELS
+    seq_lens = base.SEQUENCE_LENGTHS
+    date_start = settings.START_TIME
+    return render_to_response('params.html', locals(), context_instance=RequestContext(request))
+
 def predicted_line_chart(request):
     if request.method == 'GET':
         time_period = settings.TIME_PERIODS

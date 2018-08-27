@@ -4,7 +4,7 @@ from __future__ import print_function
 import sys
 sys.path.append("..")
 from sklearn.svm import SVR
-import time, os, math
+import time, os, math, keras
 import warnings
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ from datetime import datetime
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor
+from sklearn.neural_network import MLPRegressor
 from statsmodels.tsa.stattools import ARMA
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
@@ -36,16 +37,25 @@ def load_data(training_dir_fp, testing_dir_fp, sep = '\t', line_end = '\n'):
             for idx, item in enumerate(train_f.read().split(line_end)):
                 if idx and item != "":
                     train.append([float(it) for it in item.split(sep)])
-        testing_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
-        with open(testing_data_fp, 'r') as testing_f:
-            for idx, item in enumerate(testing_f.read().split(line_end)):
+
+        testing_rid_and_dti_and_y_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(
+            time_segment_i) + '_rid_and_dti_and_y_data.tsv')
+        testing_x_data_seq_fp = os.path.join(testing_dir_fp,
+                                             base.SEGMENT_FILE_PRE + str(time_segment_i) + '_x_data.tsv')
+        with open(testing_x_data_seq_fp, 'r') as testing_x_data_f:
+            for idx, item in enumerate(testing_x_data_f.read().split(line_end)):
+                if idx and item != "":
+                    item_arr = item.split(sep)
+                    x_test.append([float(it) for it in item_arr])
+
+        with open(testing_rid_and_dti_and_y_data_fp, 'r') as testing_rid_and_dti_and_y_data_f:
+            for idx, item in enumerate(testing_rid_and_dti_and_y_data_f.read().split(line_end)):
                 if idx and item != "":
                     item_arr = item.split(sep)
                     time_segs.append(time_segment_i)
                     region_ids.append(item_arr[0])
                     date_times.append(item_arr[1])
-                    x_test.append([float(it) for it in item_arr[2: -1]])
-                    y_test.append(float(item_arr[-1]))
+                    y_test.append(float(item_arr[2]))
 
     print("train_test_ratio %.2f" % (float(len(y_train))/ len(y_test)))
 
@@ -96,9 +106,7 @@ def predict_point_by_point(model, data):
 def baseline_model_training_and_saving(model_name, classifier):
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
-        region_ids, date_times, y_origin, y_predicted= [], [], [], []
         for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
-            freq_data_dir = os.path.join(base.freqency_data_dir, day_interval_str, base.SEGMENT_FILE_PRE + str(time_segment_i))
             for seq_len in base.SEQUENCE_LENGTHS:
                 print(model_name + ' ' + day_interval_str + ' time_segment: ' + str(time_segment_i) + 'seq len: ' + str(seq_len))
                 seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_len)
@@ -108,50 +116,18 @@ def baseline_model_training_and_saving(model_name, classifier):
                     if not os.path.exists(dtc):
                         os.makedirs(dtc)
                 predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
-                for rid in range(base.N_LNG * base.N_LAT):
-                        training_data_seq, testing_data_seq, reg_train_data, reg_testing_data= [], [], [], []
-                        freq_data_fp = os.path.join(freq_data_dir, str(rid) + '.tsv')
-                        freq_data = open(freq_data_fp, 'rb').read()
+                training_dir_fp = os.path.join(base.training_data_dir, day_interval_str, seq_dir_name)
+                testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str, seq_dir_name)
+                [x_train, y_train, x_test, y_test, _, region_ids, date_times] = load_data(training_dir_fp,
+                                                                                                  testing_dir_fp)
 
-                        for idx, line_item in enumerate(freq_data.split('\n')):
-                            if idx and line_item != "":
-                                line_item_arr = line_item.split("\t")
-                                dti = datetime.strptime(line_item_arr[0], base.SECOND_FORMAT)
-                                freq = float(line_item_arr[1])
-                                if settings.TRAINING_DATETIME_SLOT[0] <= dti <= settings.TRAINING_DATETIME_SLOT[1]:
-                                    reg_train_data.append(freq)
-                                elif settings.TESTING_DATETIME_SLOT[0] <= dti <= settings.TESTING_DATETIME_SLOT[1]:
-                                    reg_testing_data.append([dti, freq])
-
-                        for index in range(len(reg_train_data) - seq_len + 1):
-                            training_data_seq.append(reg_train_data[index: index + seq_len])
-
-                        for index in range(len(reg_testing_data) - seq_len + 1):
-                            testing_data_seq.append([item[1] for item in reg_testing_data[index: index + seq_len]])
-                            date_times.append(reg_testing_data[index + seq_len - 1][0].strftime(base.SECOND_FORMAT))
-                            region_ids.append(str(rid))
-                        training_data_seq = np.array(training_data_seq)
-                        testing_data_seq = np.array(testing_data_seq)
-
-                        np.random.shuffle(training_data_seq)
-                        x_train = training_data_seq[:, :-1]
-                        y_train = training_data_seq[:, -1]
-
-                        np.random.shuffle(testing_data_seq)
-                        x_test = testing_data_seq[:, :-1]
-                        y_test = testing_data_seq[:, -1]
-
-                        classifier.fit(x_train, y_train)
-                        predicted_y = classifier.predict(x_test)
-
-                        for iidx, item in enumerate(y_test):
-                            y_origin.append(item)
-                            y_predicted.append(predicted_y[iidx])
+                classifier.fit(x_train, y_train)
+                predicted_y = classifier.predict(x_test)
                 with open(predict_result_fp, "w") as predict_f:
                     ltws = []
                     for tidx, dt_i in enumerate(date_times):
-                        ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_origin[tidx]),
-                                str(y_predicted[tidx])])
+                        ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]),
+                                str(predicted_y[tidx])])
                         ltws.append(ltw)
                     predict_f.write('\n'.join(ltws))
 
@@ -195,8 +171,9 @@ def baseline_model_pipline():
     rfr = RandomForestRegressor(n_estimators=20)
     abr = AdaBoostRegressor(n_estimators=50)
     gbr = GradientBoostingRegressor(n_estimators=100)
-    classifiers = [lr, lasso, ridge,  svr, dtr, rfr, abr, gbr] #
-    classifier_names = ['lr', 'lasso', 'ridge', 'svr', 'dtr', 'rfr', 'abr', 'gbr'] #
+    mlp = MLPRegressor(solver='adam', activation = 'relu', alpha=1e-5, hidden_layer_sizes=(100, 100), random_state=1)
+    classifiers = [lr, lasso, ridge,  svr, dtr, rfr, abr, gbr, mlp] #,
+    classifier_names = ['lr', 'lasso', 'ridge', 'svr', 'dtr', 'rfr', 'abr', 'gbr', 'mlp'] #,
 
     for midx, item in enumerate(classifiers):
         print('model ' + classifier_names[midx])
@@ -241,42 +218,69 @@ def lstm_model_training_and_saving_pipline():
 
 
 def lstm_model_param_trying_pipline():
-    number_of_lstm_layers = [1, 2, 4]
-    number_of_neurons_of_first_lstm = []
+    number_of_epoch = 3
+    seq_length = 99
+
+    tail_name = '_epoch_' + str(number_of_epoch)
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
         day_interval_str = settings.DAYS_INTERVALS_LABEL[didx]
-        for seq_length in base.SEQUENCE_LENGTHS:
-            print('model lstm ' + day_interval_str + ' seq len ' + str(seq_length))
-            seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_length)
-            training_dir_fp = os.path.join(base.training_data_dir, day_interval_str, seq_dir_name)
-            testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str, seq_dir_name)
-            model_dir_fp = os.path.join(base.model_dir, day_interval_str, seq_dir_name)
-            prediction_fp = os.path.join(base.predict_result_dir, 'lstm', day_interval_str, seq_dir_name)
-            dirs_to_create = [model_dir_fp, prediction_fp]
-            for dtc in dirs_to_create:
-                if not os.path.exists(dtc):
-                    os.makedirs(dtc)
-            [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp, testing_dir_fp)
+        print('model lstm ' + day_interval_str + ' seq len ' + str(seq_length))
+        seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_length)
+        training_dir_fp = os.path.join(base.training_data_dir, day_interval_str, seq_dir_name)
+        testing_dir_fp = os.path.join(base.testing_data_dir, day_interval_str, seq_dir_name)
 
-            x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-            x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
-            model = build_lstm_model([1, seq_length, 2 * seq_length, 1])
+        model_dir_fp = os.path.join(base.model_dir, day_interval_str, seq_dir_name + tail_name)
+        prediction_fp = os.path.join(base.predict_result_dir, 'lstm', day_interval_str)
+        dirs_to_create = [model_dir_fp, prediction_fp]
+        for dtc in dirs_to_create:
+            if not os.path.exists(dtc):
+                os.makedirs(dtc)
+        [x_train, y_train, x_test, y_test, time_segs, region_ids, date_times] = load_data(training_dir_fp,
+                                                                                          testing_dir_fp)
 
-            model_path = os.path.join(model_dir_fp, "lstm_model.h5")
-            model_saver = ModelCheckpoint(filepath=model_path, verbose=1)
-            model.fit(x_train, y_train, batch_size=BATCH_SIZE, nb_epoch=EPOCHS, validation_split= VALIDATION_RATIO, callbacks=[model_saver])
+        x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+        x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
 
-            predicted_y = predict_point_by_point(model, x_test)
-            for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
-                tidx_list = [tidx for tidx, titem in enumerate(time_segs) if titem == time_segment_i]
-                predict_result_fp = os.path.join(prediction_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+        predictor = Predictor(prediction_fp, seq_dir_name, x_test, y_test, time_segs, region_ids, date_times)
 
-                with open(predict_result_fp, "w") as predict_f:
-                    ltws = []
-                    for tidx in tidx_list:
-                        ltw = '\t'.join([region_ids[tidx], date_times[tidx], str(y_test[tidx]), str(predicted_y[tidx])])
-                        ltws.append(ltw)
-                    predict_f.write('\n'.join(ltws))
+        model = build_lstm_model([1, seq_length, 2 * seq_length, 1])
+
+        model_path = os.path.join(model_dir_fp, "lstm_model.h5")
+        model_saver = ModelCheckpoint(filepath=model_path, verbose=1)
+        model.fit(x_train, y_train, batch_size=BATCH_SIZE, nb_epoch= number_of_epoch, validation_split=VALIDATION_RATIO,
+                  callbacks=[model_saver, predictor])
+
+
+class Predictor(keras.callbacks.Callback):
+    def __init__(self, prediction_fp, seq_dir_name, x_test, y_test, time_segs, region_ids, date_times):
+        super(Predictor, self).__init__()
+        self.prediction_fp = prediction_fp
+        self.seq_dir_name = seq_dir_name
+        self.x_test = x_test
+        self.y_test = y_test
+        self.time_segs = time_segs
+        self.region_ids = region_ids
+        self.date_times = date_times
+
+    def on_epoch_end(self, epoch, logs={}):
+        print("Predictor start at epoch %d" % epoch)
+
+        predict_result_dir_fp = os.path.join(self.prediction_fp, self.seq_dir_name + '_epoch_' + str(epoch))
+        if not os.path.exists(predict_result_dir_fp):
+            os.makedirs(predict_result_dir_fp)
+
+        predicted_y = predict_point_by_point(self.model, self.x_test)
+        for time_segment_i in range(base.TIME_SEGMENT_LENGTH):
+            tidx_list = [tidx for tidx, titem in enumerate(self.time_segs) if titem == time_segment_i]
+            predict_result_fp = os.path.join(predict_result_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + ".tsv")
+
+            with open(predict_result_fp, "w") as predict_f:
+                ltws = []
+                for tidx in tidx_list:
+                    ltw = '\t'.join(
+                        [self.region_ids[tidx], self.date_times[tidx], str(self.y_test[tidx]), str(predicted_y[tidx])])
+                    ltws.append(ltw)
+                predict_f.write('\n'.join(ltws))
 
 def arma_model_training_and_saving_pipline():
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
@@ -338,7 +342,12 @@ def arma_model_training_and_saving_pipline():
                                 break
 
 if __name__ == "__main__":
-    baseline_model_pipline()
+    SERVER = False
+    if SERVER == True:
+        lstm_model_training_and_saving_pipline()
+        arma_model_training_and_saving_pipline()
+    else:
+        baseline_model_pipline()
 
 
 

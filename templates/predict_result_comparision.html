@@ -165,6 +165,7 @@
         autoclose:1,
         minuteStep:1});
 
+    var gradient_real = new gradientColor('#FFFFFF','#FF0000',255);
     var gradient = new gradientColor('#FFFFFF','#FF0000',255);
     function redraw_freqency_of_real_and_predicted(color_matrix_real, color_matrix_predicted, grid_boundaries, stroke_color, datetime_idx) {
         lmap.clearOverlays();
@@ -185,7 +186,7 @@
                 strokeColor: stroke_color,
                 strokeWeight: 1,
                 strokeOpacity: 1,
-                fillColor: gradient[color],
+                fillColor: gradient_real[color],
                 fillOpacity: 0.5
             });
 

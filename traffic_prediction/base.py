@@ -18,7 +18,7 @@ SERVER_URL = "http://www.easybots.cn/api/holiday.php?d="
 
 IS_TIME_SEGMENT = True
 
-classifier_names = ['lstm', 'arma', 'lr', 'lasso', 'ridge', 'svr', 'dtr', 'rfr', 'abr', 'gbr']
+classifier_names = ['lstm', 'mlp','arma','lr', 'lasso', 'ridge', 'svr', 'dtr', 'rfr', 'abr', 'gbr'] #
 
 TIME_SEGMENT_DIR_NAME = 'time_segment_data' if IS_TIME_SEGMENT else 'hour_data'
 TIME_SEGMENT_LENGTH = 6 if IS_TIME_SEGMENT else 24
@@ -27,9 +27,8 @@ TIME_SEGMENT_START_TIME_DICT = {item: datetime.datetime(2000, 1, 1, TIME_SEGMENT
 SEGMENT_FILE_PRE = 'seg_'
 SEQ_LEN_FILE_PRE = 'seq_'
 ERROR_FILE_NAME = 'error.tsv'
-PREDICTION_TABLE_FILE_NAME = 'performance_of_rmse.tsv'
 SEQUENCE_LENGTH_DICT = {1: 19, 3: 19, 7: 19, 30: 19}
-SEQUENCE_LENGTHS = [19]#9, 19, 49, 99
+SEQUENCE_LENGTHS = [99]# 9, 19, 49, 
 
 DAWN = 0; MORNING_RUSH = 1; MORNING_WORKING = 2; NOON = 3; AFTERNOON = 4; NIGHT = 5
 
@@ -63,6 +62,7 @@ SEP = 1000
 
 N_LAT = int(math.ceil((MAX_LAT - MIN_LAT) / LAT_DELTA))
 N_LNG = int(math.ceil((MAX_LNG - MIN_LNG) / LNG_DELTA))
+
 
 LNG_COORDINATES = [MIN_LNG + i_LNG * LNG_DELTA for i_LNG in range(N_LNG + 1)]
 LAT_COORDINATES = [MIN_LAT + i_LAT * LAT_DELTA for i_LAT in range(N_LAT + 1)]
@@ -198,4 +198,4 @@ def write_sequence_array_into_file(out_fp, seq_arr, sep="\t", line_end = "\n"):
     print ("writing %s sucessful" % out_fp)
 
 if __name__ == "__main__":
-    pass
+    print 'N_LAT %d N_LNG %d' % (N_LAT, N_LNG)

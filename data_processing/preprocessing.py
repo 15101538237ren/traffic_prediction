@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-
+import sys
+sys.path.append("..")
 from traffic_prediction import base, helpers
 from traffic_prediction import settings
-import os, json, math, simplejson, datetime, time, pickle
+import os, json, math, simplejson, datetime, time, pickle, urllib2
 import numpy as np
 import machine_learning
 frequency_matrix_dict, max_frequency_dict, left_datetimes_arr, geo_points_list, time_segment_list = None, None, None, None, None
+
 #标记是否是节假日
 def label_holiday(geo_points_list):
     holiday_labels = []
@@ -243,8 +245,8 @@ def generate_freq_data_pipline():
         t1 = time.time()
         print ('finish generate freq data of %s in %.2f seconds' % (day_interval_str, t1 - t0))
 
-def generate_train_and_test_data(freq_data_dir, training_out_fp, testing_out_fp, sequence_length, training_datetime_slot, testing_datetime_slot):
-    training_data_seq, testing_data_seq = [], []
+def generate_train_and_test_data(freq_data_dir, training_out_fp, testing_rid_and_dti_and_y_data_fp, testing_x_data_seq_fp, sequence_length):
+    training_data_seq, testing_rid_dti_and_y_data_seq, testing_x_data_seq = [], [], []
 
     seq_len = sequence_length + 1
     for rid in range(base.N_LNG * base.N_LAT):
@@ -259,23 +261,26 @@ def generate_train_and_test_data(freq_data_dir, training_out_fp, testing_out_fp,
                 dti = datetime.datetime.strptime(line_item_arr[0], base.SECOND_FORMAT)
                 freq = float(line_item_arr[1])
                 
-                if training_datetime_slot[0] <= dti <= training_datetime_slot[1]:
+                if settings.TRAINING_DATETIME_SLOT[0] <= dti <= settings.TRAINING_DATETIME_SLOT[1]:
                     region_train_data_origin.append(freq)
-                elif testing_datetime_slot[0] <= dti <= testing_datetime_slot[1]:
+                elif settings.TESTING_DATETIME_SLOT[0] <= dti <= settings.TESTING_DATETIME_SLOT[1]:
                     region_testing_data_origin.append([rid, dti, freq])
     
         for index in range(len(region_train_data_origin) - seq_len + 1):
             training_data_seq.append(region_train_data_origin[index: index + seq_len])  #得到长度为seq_len+1的向量，最后一个作为label
         
         for index in range(len(region_testing_data_origin) - seq_len + 1):
-            arr_to_append = [region_testing_data_origin[index + seq_len - 1][0],
-                             region_testing_data_origin[index + seq_len - 1][1].strftime(base.SECOND_FORMAT)]
-            for idx in range(index, index + seq_len):
-                arr_to_append.append(region_testing_data_origin[idx][2])
-            testing_data_seq.append(arr_to_append)
+            testing_rid_dti_and_y_data_seq.append([region_testing_data_origin[index + seq_len - 1][0],
+                             region_testing_data_origin[index + seq_len - 1][1].strftime(base.SECOND_FORMAT), region_testing_data_origin[index + seq_len - 1][2]])
+            pre_arr_to_append = []
+            for idx in range(index, index + seq_len - 1):
+                pre_arr_to_append.append(region_testing_data_origin[idx][2])
+
+            testing_x_data_seq.append(pre_arr_to_append)
     
     base.write_sequence_array_into_file(training_out_fp, training_data_seq)
-    base.write_sequence_array_into_file(testing_out_fp, testing_data_seq)
+    base.write_sequence_array_into_file(testing_rid_and_dti_and_y_data_fp, testing_rid_dti_and_y_data_seq)
+    base.write_sequence_array_into_file(testing_x_data_seq_fp, testing_x_data_seq)
 
 def generate_train_and_test_data_pipline():
     for didx, day_interval in enumerate(settings.DAYS_INTERVALS):
@@ -294,9 +299,9 @@ def generate_train_and_test_data_pipline():
                         os.makedirs(dtc)
 
                 training_data_fp = os.path.join(training_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
-                testing_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '.tsv')
-                generate_train_and_test_data(freqency_data_dir, training_data_fp, testing_data_fp, seq_length,
-                                         settings.TRAINING_DATETIME_SLOT, settings.TESTING_DATETIME_SLOT)
+                testing_rid_and_dti_and_y_data_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '_rid_and_dti_and_y_data.tsv')
+                testing_x_data_seq_fp = os.path.join(testing_dir_fp, base.SEGMENT_FILE_PRE + str(time_segment_i) + '_x_data.tsv')
+                generate_train_and_test_data(freqency_data_dir, training_data_fp, testing_rid_and_dti_and_y_data_fp, testing_x_data_seq_fp , seq_length)
 
 def load_prediction_result(int_time_period, time_segment_i, classifier_name, seq_len):
     seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_len)
@@ -363,18 +368,20 @@ def generate_prediction_result_table_of_tsv(model_name):
         for seq_length in base.SEQUENCE_LENGTHS:
             seq_dir_name = base.SEQ_LEN_FILE_PRE + str(seq_length)
             prediction_data_fp = os.path.join(base.predict_result_dir,  model_name, day_interval_str, seq_dir_name, base.ERROR_FILE_NAME)
-            rmses = base.read_tab_seperated_file_and_get_target_column(target_col_index=2, input_file_path=prediction_data_fp)
+            rmses = base.read_tab_seperated_file_and_get_target_column(target_col_index=1, input_file_path=prediction_data_fp)
             mean_rmse = np.mean(np.array([float(rmse) for rmse in rmses]))
             performance_data[didx].append(round(float(mean_rmse), 3))
 
-    prediction_result_table_fp = os.path.join(base.predict_result_dir,  model_name, base.PREDICTION_TABLE_FILE_NAME)
+    PREDICTION_TABLE_FILE_NAME = 'performance_of_mae.tsv'
+    prediction_result_table_fp = os.path.join(base.predict_result_dir,  model_name, PREDICTION_TABLE_FILE_NAME)
     generate_tsv(prediction_result_table_fp, col_names, row_names, performance_data)
-    print('performance table of ' + model_name + 'generated!')
+    print('performance table of ' + model_name + ' generated!')
 
 if __name__ == "__main__":
-    # generate_prediction_result_table_of_tsv('lstm')
+    # for name in base.classifier_names:
+    #     generate_prediction_result_table_of_tsv(name)
     # generate_freq_data_pipline()
     generate_train_and_test_data_pipline()
     # machine_learning.baseline_model_pipline()
-    machine_learning.lstm_model_training_and_saving_pipline()
+    # machine_learning.lstm_model_training_and_saving_pipline()
     # machine_learning.arma_model_training_and_saving_pipline()
